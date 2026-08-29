@@ -75,20 +75,15 @@ export default function Header() {
           </div>
 
           {/* SEARCH - MOBILE */}
-          <Link
-            href="/search"
-            aria-label="Search"
-            onClick={() => setMenuOpen(false)}
-            className="grid size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
-          >
-            🔍
-          </Link>
+          <div className="block md:hidden">
+            <SearchBar />
+          </div>
 
           {/* MOBILE MENU BUTTON */}
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="grid size-12 place-items-center rounded-full bg-white/10 text-xl md:hidden"
+            className="grid size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
             aria-label="Open menu"
             aria-expanded={menuOpen}
           >
@@ -138,6 +133,7 @@ export default function Header() {
           </nav>
         </div>
       )}
+
     </header>
   );
 }
