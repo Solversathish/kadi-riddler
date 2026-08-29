@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import SearchBar from "../components/SearchBar";
 
@@ -18,7 +19,7 @@ type SearchResult = {
   href: string;
 };
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q")?.trim() || "";
 
@@ -95,6 +96,7 @@ export default function SearchPage() {
 
           {/* Navigation */}
           <nav className="hidden gap-8 text-sm font-bold md:flex">
+
             <Link
               href="/"
               className="text-white/70 transition hover:text-yellow-400"
@@ -122,6 +124,7 @@ export default function SearchPage() {
             >
               Amazing Facts
             </Link>
+
           </nav>
 
           {/* Search Icon */}
@@ -157,8 +160,8 @@ export default function SearchPage() {
 
         {/* Search Box */}
         <div className="mx-auto mt-10 flex max-w-2xl justify-center">
-  <SearchBar />
-</div>
+          <SearchBar />
+        </div>
 
         {/* Results */}
         {query && (
@@ -290,5 +293,21 @@ export default function SearchPage() {
       </footer>
 
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#07091f] text-white grid place-items-center">
+          <p className="text-white/60">
+            Loading search...
+          </p>
+        </main>
+      }
+    >
+      <SearchContent />
+    </Suspense>
   );
 }
