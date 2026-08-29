@@ -46,7 +46,7 @@ const riddles = [
     question: "கால்கள் உண்டு, ஆனால் நடக்க முடியாது. அது என்ன?",
     answer: "மேசை",
     tanglishQuestion:
-      "Kaalgal undu, aanaal nadakka mudiyadhu. Adhu enna?",
+      "Kaalkal undu, aanaal nadakka mudiyaadhu. Adhu enna?",
     tanglishAnswer: "Mesai",
   },
 ];
@@ -63,14 +63,17 @@ const categories = [
 export default function RiddlesPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [revealed, setRevealed] = useState<number[]>([]);
-  const [tamilLanguage, setTamilLanguage] = useState<"Tamil" | "Tanglish">(
-    "Tamil"
-  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tamilLanguage, setTamilLanguage] = useState<
+    "Tamil" | "Tanglish"
+  >("Tamil");
 
   const filteredRiddles =
     selectedCategory === "All"
       ? riddles
-      : riddles.filter((riddle) => riddle.category === selectedCategory);
+      : riddles.filter(
+          (riddle) => riddle.category === selectedCategory
+        );
 
   const toggleAnswer = (id: number) => {
     setRevealed((current) =>
@@ -85,36 +88,105 @@ export default function RiddlesPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07091f]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <a href="/" className="text-2xl font-black tracking-tight">
+          {/* Logo */}
+          <a
+            href="/"
+            className="text-2xl font-black tracking-tight"
+            onClick={() => setMenuOpen(false)}
+          >
             <span className="text-white">KADI</span>{" "}
             <span className="text-yellow-400">RIDDLER</span>
           </a>
 
-          <nav className="hidden gap-8 text-sm font-bold md:flex">
-            <a href="/" className="text-white/70 hover:text-yellow-400">
+          {/* Desktop Navigation */}
+          <nav className="hidden items-center gap-8 text-sm font-bold md:flex">
+            <a
+              href="/"
+              className="text-white/70 transition hover:text-yellow-400"
+            >
               Home
             </a>
 
-            <a href="/riddles" className="text-yellow-400">
+            <a
+              href="/riddles"
+              className="text-yellow-400 transition"
+            >
               Riddles
             </a>
 
             <a
               href="/kadi-jokes"
-              className="text-white/70 hover:text-orange-400"
+              className="text-white/70 transition hover:text-orange-400"
             >
               Kadi Jokes
             </a>
 
-            <a href="/facts" className="text-white/70 hover:text-green-400">
+            <a
+              href="/facts"
+              className="text-white/70 transition hover:text-green-400"
+            >
               Amazing Facts
             </a>
           </nav>
 
-          <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
-            🔍
+          {/* Right Side */}
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
+              🔍
+            </div>
+
+            {/* Mobile Hamburger */}
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((current) => !current)}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-2xl transition hover:bg-white/20 md:hidden"
+            >
+              {menuOpen ? "✕" : "☰"}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {menuOpen && (
+          <div className="border-t border-white/10 bg-[#07091f] px-5 pb-5 pt-3 md:hidden">
+            <nav className="flex flex-col gap-2">
+              <a
+                href="/"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-4 py-3 font-bold text-white/70 transition hover:bg-white/10 hover:text-yellow-400"
+              >
+                🏠 Home
+              </a>
+
+              <a
+                href="/riddles"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl bg-yellow-400/10 px-4 py-3 font-bold text-yellow-400"
+              >
+                🧩 Riddles
+              </a>
+
+              <a
+                href="/kadi-jokes"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-4 py-3 font-bold text-white/70 transition hover:bg-white/10 hover:text-orange-400"
+              >
+                😂 Kadi Jokes
+              </a>
+
+              <a
+                href="/facts"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-4 py-3 font-bold text-white/70 transition hover:bg-white/10 hover:text-green-400"
+              >
+                🤯 Amazing Facts
+              </a>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
@@ -125,7 +197,8 @@ export default function RiddlesPage() {
           <div className="mb-5 text-6xl">🧩</div>
 
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">
-            RIDDLE <span className="text-yellow-400">TIME!</span>
+            RIDDLE{" "}
+            <span className="text-yellow-400">TIME!</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">
@@ -178,7 +251,6 @@ export default function RiddlesPage() {
         <div className="grid gap-6 md:grid-cols-2">
           {filteredRiddles.map((riddle) => {
             const isRevealed = revealed.includes(riddle.id);
-
             const isTamil = riddle.category === "Tamil";
 
             const displayedQuestion =
@@ -208,11 +280,13 @@ export default function RiddlesPage() {
 
                 {/* Tamil / Tanglish Toggle */}
                 {isTamil && (
-                  <div className="mb-6 flex w-full justify-center">
+                  <div className="mb-6 flex justify-center">
                     <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
                       <button
                         type="button"
-                        onClick={() => setTamilLanguage("Tamil")}
+                        onClick={() =>
+                          setTamilLanguage("Tamil")
+                        }
                         className={`rounded-full px-5 py-2 text-sm font-bold transition ${
                           tamilLanguage === "Tamil"
                             ? "bg-yellow-400 text-black"
@@ -224,7 +298,9 @@ export default function RiddlesPage() {
 
                       <button
                         type="button"
-                        onClick={() => setTamilLanguage("Tanglish")}
+                        onClick={() =>
+                          setTamilLanguage("Tanglish")
+                        }
                         className={`rounded-full px-5 py-2 text-sm font-bold transition ${
                           tamilLanguage === "Tanglish"
                             ? "bg-yellow-400 text-black"
@@ -257,10 +333,14 @@ export default function RiddlesPage() {
 
                 <button
                   type="button"
-                  onClick={() => toggleAnswer(riddle.id)}
+                  onClick={() =>
+                    toggleAnswer(riddle.id)
+                  }
                   className="mt-7 w-full rounded-2xl bg-gradient-to-r from-purple-600 to-fuchsia-500 px-5 py-4 font-bold transition hover:scale-[1.02]"
                 >
-                  {isRevealed ? "🙈 Hide Answer" : "👀 Reveal Answer"}
+                  {isRevealed
+                    ? "🙈 Hide Answer"
+                    : "👀 Reveal Answer"}
                 </button>
               </article>
             );
