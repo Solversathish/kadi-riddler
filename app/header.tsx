@@ -65,25 +65,40 @@ export default function Header() {
 
         </nav>
 
-        {/* SEARCH - DESKTOP */}
-        <button
-          type="button"
-          className="hidden size-12 place-items-center rounded-full bg-white/10 text-xl md:grid"
-          aria-label="Search"
-        >
-          🔍
-        </button>
+        {/* RIGHT SIDE */}
+        <div className="flex items-center gap-3">
 
-        {/* MOBILE MENU BUTTON */}
-        <button
-          type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="grid size-12 place-items-center rounded-full bg-white/10 text-xl md:hidden"
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? "✕" : "☰"}
-        </button>
+          {/* SEARCH - DESKTOP */}
+          <Link
+            href="/search"
+            aria-label="Search"
+            className="hidden size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:grid"
+          >
+            🔍
+          </Link>
+
+          {/* SEARCH - MOBILE */}
+          <Link
+            href="/search"
+            aria-label="Search"
+            onClick={() => setMenuOpen(false)}
+            className="grid size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
+          >
+            🔍
+          </Link>
+
+          {/* MOBILE MENU BUTTON */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="grid size-12 place-items-center rounded-full bg-white/10 text-xl md:hidden"
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+
+        </div>
       </div>
 
       {/* MOBILE MENU */}
