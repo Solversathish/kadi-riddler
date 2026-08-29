@@ -10,7 +10,8 @@ const jokes = [
     answer: "அதுக்கு mouse பிடிக்காது! 🐭😂",
     tanglishQuestion:
       "Oru poonai yen computer-ai payanpaduthaadhu? 🐱💻",
-    tanglishAnswer: "Adhukku mouse pidikkaadhu! 🐭😂",
+    tanglishAnswer:
+      "Adhukku mouse pidikkaadhu! 🐭😂",
   },
   {
     id: 2,
@@ -19,7 +20,8 @@ const jokes = [
     answer: "அது already broken record! 😂",
     tanglishQuestion:
       "Muttai yen pallikkoodam pogaadhu? 🥚",
-    tanglishAnswer: "Adhu already broken record! 😂",
+    tanglishAnswer:
+      "Adhu already broken record! 😂",
   },
   {
     id: 3,
@@ -33,6 +35,18 @@ const jokes = [
     question: "Why don't eggs tell jokes?",
     answer: "Because they might crack each other up! 🥚😂",
   },
+  {
+    id: 5,
+    category: "Funny Questions",
+    question: "Why did the math book look sad?",
+    answer: "Because it had too many problems! 📚😂",
+  },
+  {
+    id: 6,
+    category: "Dad Jokes",
+    question: "Why did the bicycle fall over?",
+    answer: "Because it was two-tired! 🚲😂",
+  },
 ];
 
 const categories = [
@@ -45,6 +59,8 @@ const categories = [
 export default function KadiJokesPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [revealed, setRevealed] = useState<number[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const [tamilLanguage, setTamilLanguage] = useState<
     "Tamil" | "Tanglish"
   >("Tamil");
@@ -52,7 +68,9 @@ export default function KadiJokesPage() {
   const filteredJokes =
     selectedCategory === "All"
       ? jokes
-      : jokes.filter((joke) => joke.category === selectedCategory);
+      : jokes.filter(
+          (joke) => joke.category === selectedCategory
+        );
 
   const toggleAnswer = (id: number) => {
     setRevealed((current) =>
@@ -64,56 +82,131 @@ export default function KadiJokesPage() {
 
   return (
     <main className="min-h-screen bg-[#07091f] text-white">
+
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07091f]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <a href="/" className="text-2xl font-black tracking-tight">
+
+          {/* Logo */}
+          <a
+            href="/"
+            className="text-2xl font-black tracking-tight"
+            onClick={() => setMenuOpen(false)}
+          >
             <span className="text-white">KADI</span>{" "}
             <span className="text-yellow-400">RIDDLER</span>
           </a>
 
-          <nav className="hidden gap-8 text-sm font-bold md:flex">
+          {/* Desktop Navigation */}
+          <nav className="hidden items-center gap-8 text-sm font-bold md:flex">
+
             <a
               href="/"
-              className="text-white/70 hover:text-yellow-400"
+              className="text-white/70 transition hover:text-yellow-400"
             >
               Home
             </a>
 
             <a
               href="/riddles"
-              className="text-white/70 hover:text-yellow-400"
+              className="text-white/70 transition hover:text-yellow-400"
             >
               Riddles
             </a>
 
             <a
               href="/kadi-jokes"
-              className="text-orange-400"
+              className="text-orange-400 transition"
             >
               Kadi Jokes
             </a>
 
             <a
               href="/facts"
-              className="text-white/70 hover:text-green-400"
+              className="text-white/70 transition hover:text-green-400"
             >
               Amazing Facts
             </a>
+
           </nav>
 
-          <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
-            🔍
+          {/* Right Side */}
+          <div className="flex items-center gap-3">
+
+            {/* Search */}
+            <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
+              🔍
+            </div>
+
+            {/* Mobile Hamburger */}
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              aria-expanded={menuOpen}
+              onClick={() =>
+                setMenuOpen((current) => !current)
+              }
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-2xl transition hover:bg-white/20 md:hidden"
+            >
+              {menuOpen ? "✕" : "☰"}
+            </button>
+
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {menuOpen && (
+          <div className="border-t border-white/10 bg-[#07091f] px-5 pb-5 pt-3 md:hidden">
+
+            <nav className="flex flex-col gap-2">
+
+              <a
+                href="/"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-4 py-3 font-bold text-white/70 transition hover:bg-white/10 hover:text-yellow-400"
+              >
+                🏠 Home
+              </a>
+
+              <a
+                href="/riddles"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-4 py-3 font-bold text-white/70 transition hover:bg-white/10 hover:text-yellow-400"
+              >
+                🧩 Riddles
+              </a>
+
+              <a
+                href="/kadi-jokes"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl bg-orange-400/10 px-4 py-3 font-bold text-orange-400"
+              >
+                😂 Kadi Jokes
+              </a>
+
+              <a
+                href="/facts"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-4 py-3 font-bold text-white/70 transition hover:bg-white/10 hover:text-green-400"
+              >
+                🤯 Amazing Facts
+              </a>
+
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
       <section className="relative overflow-hidden">
+
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#6b2a12,transparent_55%)]" />
 
         <div className="relative mx-auto max-w-5xl px-5 pb-14 pt-20 text-center">
-          <div className="mb-5 text-6xl">😂</div>
+
+          <div className="mb-5 text-6xl">
+            😂
+          </div>
 
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">
             KADI{" "}
@@ -123,20 +216,25 @@ export default function KadiJokesPage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">
-            Warning: These jokes may be terrible. That's exactly why they're
-            funny! 😆
+            Warning: These jokes may be terrible.
+            That's exactly why they're funny! 😆
           </p>
+
         </div>
       </section>
 
       {/* Categories */}
       <section className="mx-auto max-w-7xl px-5">
+
         <div className="flex flex-wrap justify-center gap-3">
+
           {categories.map((category) => (
             <button
               key={category}
               type="button"
-              onClick={() => setSelectedCategory(category)}
+              onClick={() =>
+                setSelectedCategory(category)
+              }
               className={`rounded-full px-5 py-3 text-sm font-bold transition ${
                 selectedCategory === category
                   ? "bg-orange-400 text-black shadow-lg shadow-orange-400/20"
@@ -146,13 +244,17 @@ export default function KadiJokesPage() {
               {category}
             </button>
           ))}
+
         </div>
       </section>
 
       {/* Joke Cards */}
       <section className="mx-auto max-w-7xl px-5 py-14">
+
         <div className="mb-8 flex items-end justify-between">
+
           <div>
+
             <p className="mb-2 text-sm font-bold uppercase tracking-widest text-orange-400">
               Prepare to cringe
             </p>
@@ -162,25 +264,34 @@ export default function KadiJokesPage() {
                 ? "All Kadi Jokes"
                 : selectedCategory}
             </h2>
+
           </div>
 
           <span className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/60">
             {filteredJokes.length} jokes
           </span>
+
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
+
           {filteredJokes.map((joke) => {
-            const isRevealed = revealed.includes(joke.id);
-            const isTamil = joke.category === "Tamil Kadi";
+
+            const isRevealed =
+              revealed.includes(joke.id);
+
+            const isTamil =
+              joke.category === "Tamil Kadi";
 
             const displayedQuestion =
-              isTamil && tamilLanguage === "Tanglish"
+              isTamil &&
+              tamilLanguage === "Tanglish"
                 ? joke.tanglishQuestion
                 : joke.question;
 
             const displayedAnswer =
-              isTamil && tamilLanguage === "Tanglish"
+              isTamil &&
+              tamilLanguage === "Tanglish"
                 ? joke.tanglishAnswer
                 : joke.answer;
 
@@ -189,7 +300,10 @@ export default function KadiJokesPage() {
                 key={joke.id}
                 className="group rounded-3xl border border-white/10 bg-white/[0.06] p-7 shadow-xl transition hover:-translate-y-1 hover:bg-white/[0.09]"
               >
+
+                {/* Category */}
                 <div className="mb-6 flex items-center justify-between">
+
                   <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-bold text-orange-300">
                     {joke.category}
                   </span>
@@ -197,12 +311,15 @@ export default function KadiJokesPage() {
                   <span className="text-2xl">
                     😂
                   </span>
+
                 </div>
 
                 {/* Tamil / Tanglish Toggle */}
                 {isTamil && (
                   <div className="mb-6 flex justify-center">
+
                     <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
+
                       <button
                         type="button"
                         onClick={() =>
@@ -230,20 +347,25 @@ export default function KadiJokesPage() {
                       >
                         Tanglish
                       </button>
+
                     </div>
                   </div>
                 )}
 
+                {/* Question Icon */}
                 <div className="mb-6 text-4xl">
                   🤔
                 </div>
 
+                {/* Question */}
                 <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
                   {displayedQuestion}
                 </h3>
 
+                {/* Punchline */}
                 {isRevealed && (
                   <div className="mt-6 rounded-2xl border border-orange-400/20 bg-orange-400/10 p-5">
+
                     <p className="text-xs font-bold uppercase tracking-widest text-orange-400">
                       😂 Punchline
                     </p>
@@ -251,9 +373,11 @@ export default function KadiJokesPage() {
                     <p className="mt-2 text-xl font-black">
                       {displayedAnswer}
                     </p>
+
                   </div>
                 )}
 
+                {/* Reveal Button */}
                 <button
                   type="button"
                   onClick={() =>
@@ -265,15 +389,19 @@ export default function KadiJokesPage() {
                     ? "🙈 Hide Punchline"
                     : "😂 Reveal Punchline"}
                 </button>
+
               </article>
             );
           })}
+
         </div>
       </section>
 
       {/* Bottom CTA */}
       <section className="mx-auto max-w-5xl px-5 pb-20">
+
         <div className="rounded-3xl border border-orange-400/20 bg-gradient-to-r from-orange-700/30 to-yellow-500/10 p-8 text-center">
+
           <div className="text-4xl">
             🤣
           </div>
@@ -283,8 +411,10 @@ export default function KadiJokesPage() {
           </h2>
 
           <p className="mt-3 text-white/60">
-            More terrible jokes are coming. You've been warned.
+            More terrible jokes are coming.
+            You've been warned.
           </p>
+
         </div>
       </section>
 
@@ -292,6 +422,7 @@ export default function KadiJokesPage() {
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-white/40">
         © 2026 Kadi Riddler. Think. Laugh. Get Tricked. 💜
       </footer>
+
     </main>
   );
 }
