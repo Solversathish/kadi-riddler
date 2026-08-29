@@ -82,58 +82,7 @@ function SearchContent() {
     <main className="min-h-screen bg-[#07091f] text-white">
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07091f]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-
-          {/* Logo */}
-          <Link
-            href="/"
-            className="text-2xl font-black tracking-tight"
-          >
-            <span className="text-white">KADI</span>{" "}
-            <span className="text-yellow-400">RIDDLER</span>
-          </Link>
-
-          {/* Navigation */}
-          <nav className="hidden gap-8 text-sm font-bold md:flex">
-
-            <Link
-              href="/"
-              className="text-white/70 transition hover:text-yellow-400"
-            >
-              Home
-            </Link>
-
-            <Link
-              href="/riddles"
-              className="text-white/70 transition hover:text-yellow-400"
-            >
-              Riddles
-            </Link>
-
-            <Link
-              href="/kadi-jokes"
-              className="text-white/70 transition hover:text-orange-400"
-            >
-              Kadi Jokes
-            </Link>
-
-            <Link
-              href="/facts"
-              className="text-white/70 transition hover:text-green-400"
-            >
-              Amazing Facts
-            </Link>
-
-          </nav>
-
-          {/* Search Icon */}
-          <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
-            🔍
-          </div>
-
-        </div>
-      </header>
+    
 
       {/* Search Section */}
       <section className="mx-auto max-w-5xl px-5 py-16">
