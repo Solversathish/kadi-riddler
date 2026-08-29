@@ -154,13 +154,16 @@ export default function Home() {
 
   return (
     <main className="site-bg min-h-screen overflow-hidden text-white">
+      
+
       {/* ========================================================= */}
       {/* HEADER */}
       {/* ========================================================= */}
 
-<header className="relative z-50 border-b border-white/10 bg-[#070b25]/95">        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-          {/* Logo */}
+      <header className="relative z-50 border-b border-white/10 bg-[#070b25]/95">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
 
+          {/* Logo */}
           <Link
             href="/"
             onClick={closeMobileMenu}
@@ -183,7 +186,6 @@ export default function Home() {
           </Link>
 
           {/* Desktop Navigation */}
-
           <nav className="hidden items-center gap-8 md:flex">
             <Link
               href="/"
@@ -214,27 +216,30 @@ export default function Home() {
             </Link>
           </nav>
 
-          {/* Desktop Search */}
+          {/* Right Side - Search + Mobile Menu */}
+          <div className="flex items-center gap-3">
 
-          <button
-            type="button"
-            aria-label="Search"
-            className="hidden size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:grid"
-          >
-            🔍
-          </button>
+            {/* Search - visible on desktop AND mobile */}
+            <button
+              type="button"
+              aria-label="Search"
+              className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95"
+            >
+              🔍
+            </button>
 
-          {/* Mobile Menu Button */}
+            {/* Mobile Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenu((v) => !v)}
+              aria-label={mobileMenu ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenu}
+              className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
+            >
+              {mobileMenu ? "✕" : "☰"}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setMobileMenu((v) => !v)}
-            aria-label={mobileMenu ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenu}
-            className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
-          >
-            {mobileMenu ? "✕" : "☰"}
-          </button>
+          </div>
         </div>
 
         {/* ===================================================== */}
@@ -244,6 +249,7 @@ export default function Home() {
         {mobileMenu && (
           <div className="border-t border-white/10 bg-[#070b25] px-5 py-5 md:hidden">
             <nav className="flex flex-col gap-2">
+
               <Link
                 href="/"
                 onClick={closeMobileMenu}
@@ -275,6 +281,7 @@ export default function Home() {
               >
                 🤯 Amazing Facts
               </Link>
+
             </nav>
           </div>
         )}
