@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import SearchBar from "./components/SearchBar";
 
 const categories = [
   {
@@ -220,13 +221,9 @@ export default function Home() {
           {/* DESKTOP SEARCH */}
           {/* ===================================================== */}
 
-          <Link
-            href="/search"
-            aria-label="Search"
-            className="hidden size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:grid"
-          >
-            🔍
-          </Link>
+          <div className="hidden md:block">
+  <SearchBar />
+</div>
 
           {/* ===================================================== */}
           {/* MOBILE MENU BUTTON */}

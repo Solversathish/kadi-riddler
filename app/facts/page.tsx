@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SearchBar from "../components/SearchBar";
 
 const facts = [
   {
@@ -171,8 +172,8 @@ export default function FactsPage() {
           <div className="flex items-center gap-3">
 
             {/* Search */}
-            <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
-              🔍
+            <div className="hidden md:block">
+              <SearchBar />
             </div>
 
             {/* Mobile Hamburger */}

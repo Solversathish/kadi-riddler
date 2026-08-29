@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SearchBar from "./components/SearchBar";
 import { useState } from "react";
 
 export default function Header() {
@@ -69,13 +70,9 @@ export default function Header() {
         <div className="flex items-center gap-3">
 
           {/* SEARCH - DESKTOP */}
-          <Link
-            href="/search"
-            aria-label="Search"
-            className="hidden size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:grid"
-          >
-            🔍
-          </Link>
+          <div className="hidden md:block">
+            <SearchBar />
+          </div>
 
           {/* SEARCH - MOBILE */}
           <Link

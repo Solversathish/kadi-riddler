@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SearchBar from "../components/SearchBar";
 
 const riddles = [
   {
@@ -132,9 +133,9 @@ export default function RiddlesPage() {
           {/* Right Side */}
           <div className="flex items-center gap-3">
             {/* Search */}
-            <div className="rounded-full bg-white/10 px-4 py-2 text-lg">
-              🔍
-            </div>
+            <div className="hidden md:block">
+  <SearchBar />
+</div>
 
             {/* Mobile Hamburger */}
             <button
