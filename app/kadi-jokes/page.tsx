@@ -8,21 +8,27 @@ const jokes = [
     category: "Tamil Kadi",
     question: "ஒரு பூனை ஏன் computer-ஐ பயன்படுத்தாது? 🐱💻",
     answer: "அதுக்கு mouse பிடிக்காது! 🐭😂",
+    tanglishQuestion:
+      "Oru poonai yen computer-ai payanpaduthaadhu? 🐱💻",
+    tanglishAnswer: "Adhukku mouse pidikkaadhu! 🐭😂",
   },
   {
     id: 2,
     category: "Tamil Kadi",
     question: "முட்டை ஏன் பள்ளிக்கூடம் போகாது? 🥚",
     answer: "அது already broken record! 😂",
+    tanglishQuestion:
+      "Muttai yen pallikkoodam pogaadhu? 🥚",
+    tanglishAnswer: "Adhu already broken record! 😂",
   },
   {
-    id: 5,
+    id: 3,
     category: "Funny Questions",
     question: "What kind of room has no doors or windows?",
     answer: "A mushroom! 🍄😂",
   },
   {
-    id: 6,
+    id: 4,
     category: "Dad Jokes",
     question: "Why don't eggs tell jokes?",
     answer: "Because they might crack each other up! 🥚😂",
@@ -39,6 +45,9 @@ const categories = [
 export default function KadiJokesPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [revealed, setRevealed] = useState<number[]>([]);
+  const [tamilLanguage, setTamilLanguage] = useState<
+    "Tamil" | "Tanglish"
+  >("Tamil");
 
   const filteredJokes =
     selectedCategory === "All"
@@ -64,11 +73,17 @@ export default function KadiJokesPage() {
           </a>
 
           <nav className="hidden gap-8 text-sm font-bold md:flex">
-            <a href="/" className="text-white/70 hover:text-yellow-400">
+            <a
+              href="/"
+              className="text-white/70 hover:text-yellow-400"
+            >
               Home
             </a>
 
-            <a href="/riddles" className="text-white/70 hover:text-yellow-400">
+            <a
+              href="/riddles"
+              className="text-white/70 hover:text-yellow-400"
+            >
               Riddles
             </a>
 
@@ -101,7 +116,10 @@ export default function KadiJokesPage() {
           <div className="mb-5 text-6xl">😂</div>
 
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">
-            KADI <span className="text-orange-400">CORNER!</span>
+            KADI{" "}
+            <span className="text-orange-400">
+              CORNER!
+            </span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">
@@ -154,6 +172,17 @@ export default function KadiJokesPage() {
         <div className="grid gap-6 md:grid-cols-2">
           {filteredJokes.map((joke) => {
             const isRevealed = revealed.includes(joke.id);
+            const isTamil = joke.category === "Tamil Kadi";
+
+            const displayedQuestion =
+              isTamil && tamilLanguage === "Tanglish"
+                ? joke.tanglishQuestion
+                : joke.question;
+
+            const displayedAnswer =
+              isTamil && tamilLanguage === "Tanglish"
+                ? joke.tanglishAnswer
+                : joke.answer;
 
             return (
               <article
@@ -165,13 +194,52 @@ export default function KadiJokesPage() {
                     {joke.category}
                   </span>
 
-                  <span className="text-2xl">😂</span>
+                  <span className="text-2xl">
+                    😂
+                  </span>
                 </div>
 
-                <div className="mb-6 text-4xl">🤔</div>
+                {/* Tamil / Tanglish Toggle */}
+                {isTamil && (
+                  <div className="mb-6 flex justify-center">
+                    <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTamilLanguage("Tamil")
+                        }
+                        className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                          tamilLanguage === "Tamil"
+                            ? "bg-orange-400 text-black"
+                            : "text-white/60 hover:text-white"
+                        }`}
+                      >
+                        தமிழ்
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTamilLanguage("Tanglish")
+                        }
+                        className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                          tamilLanguage === "Tanglish"
+                            ? "bg-orange-400 text-black"
+                            : "text-white/60 hover:text-white"
+                        }`}
+                      >
+                        Tanglish
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mb-6 text-4xl">
+                  🤔
+                </div>
 
                 <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
-                  {joke.question}
+                  {displayedQuestion}
                 </h3>
 
                 {isRevealed && (
@@ -181,14 +249,16 @@ export default function KadiJokesPage() {
                     </p>
 
                     <p className="mt-2 text-xl font-black">
-                      {joke.answer}
+                      {displayedAnswer}
                     </p>
                   </div>
                 )}
 
                 <button
                   type="button"
-                  onClick={() => toggleAnswer(joke.id)}
+                  onClick={() =>
+                    toggleAnswer(joke.id)
+                  }
                   className="mt-7 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-400 px-5 py-4 font-bold text-black transition hover:scale-[1.02]"
                 >
                   {isRevealed
@@ -204,7 +274,9 @@ export default function KadiJokesPage() {
       {/* Bottom CTA */}
       <section className="mx-auto max-w-5xl px-5 pb-20">
         <div className="rounded-3xl border border-orange-400/20 bg-gradient-to-r from-orange-700/30 to-yellow-500/10 p-8 text-center">
-          <div className="text-4xl">🤣</div>
+          <div className="text-4xl">
+            🤣
+          </div>
 
           <h2 className="mt-4 text-3xl font-black">
             Warning: Side effects may include laughing!
