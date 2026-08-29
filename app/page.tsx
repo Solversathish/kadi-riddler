@@ -14,7 +14,7 @@ const categories = [
   {
     icon: "😂",
     title: "Kadi Jokes",
-    text: "Tamil kadi jokes, English jokes and terrible one-liners.",
+    text: "Tamil kadi jokes and terrible one-liners.",
     href: "/kadi-jokes",
     tone: "from-orange-400 to-orange-600",
   },
@@ -154,8 +154,6 @@ export default function Home() {
 
   return (
     <main className="site-bg min-h-screen overflow-hidden text-white">
-      
-
       {/* ========================================================= */}
       {/* HEADER */}
       {/* ========================================================= */}
@@ -163,7 +161,8 @@ export default function Home() {
       <header className="relative z-50 border-b border-white/10 bg-[#070b25]/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
 
-          {/* Logo */}
+          {/* LOGO */}
+
           <Link
             href="/"
             onClick={closeMobileMenu}
@@ -185,7 +184,8 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* DESKTOP NAVIGATION */}
+
           <nav className="hidden items-center gap-8 md:flex">
             <Link
               href="/"
@@ -216,30 +216,31 @@ export default function Home() {
             </Link>
           </nav>
 
-          {/* Right Side - Search + Mobile Menu */}
-          <div className="flex items-center gap-3">
+          {/* ===================================================== */}
+          {/* DESKTOP SEARCH */}
+          {/* ===================================================== */}
 
-            {/* SEARCH - DESKTOP */}
-<Link
-  href="/search"
-  className="hidden size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/20 md:grid"
-  aria-label="Search"
->
-  🔍
-</Link>
+          <Link
+            href="/search"
+            aria-label="Search"
+            className="hidden size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:grid"
+          >
+            🔍
+          </Link>
 
-            {/* Mobile Menu Button */}
-            <button
-              type="button"
-              onClick={() => setMobileMenu((v) => !v)}
-              aria-label={mobileMenu ? "Close menu" : "Open menu"}
-              aria-expanded={mobileMenu}
-              className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
-            >
-              {mobileMenu ? "✕" : "☰"}
-            </button>
+          {/* ===================================================== */}
+          {/* MOBILE MENU BUTTON */}
+          {/* ===================================================== */}
 
-          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenu((v) => !v)}
+            aria-label={mobileMenu ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenu}
+            className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95 md:hidden"
+          >
+            {mobileMenu ? "✕" : "☰"}
+          </button>
         </div>
 
         {/* ===================================================== */}
@@ -282,6 +283,16 @@ export default function Home() {
                 🤯 Amazing Facts
               </Link>
 
+              {/* MOBILE SEARCH */}
+
+              <Link
+                href="/search"
+                onClick={closeMobileMenu}
+                className="touch-manipulation rounded-2xl px-5 py-4 font-bold text-white/80 hover:bg-white/10 active:bg-white/15"
+              >
+                🔍 Search
+              </Link>
+
             </nav>
           </div>
         )}
@@ -292,6 +303,7 @@ export default function Home() {
       {/* ========================================================= */}
 
       <section className="doodle-bg hero-glow relative border-b border-white/5">
+
         {/* Decorative overlay - MUST NOT BLOCK BUTTONS */}
 
         <div
@@ -300,6 +312,7 @@ export default function Home() {
         />
 
         <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
+
           {/* Hero Text */}
 
           <div>
@@ -352,6 +365,7 @@ export default function Home() {
           {/* Hero Brain */}
 
           <div className="relative mx-auto grid max-w-lg place-items-center">
+
             {/* Decorative glow */}
 
             <div
@@ -454,6 +468,7 @@ export default function Home() {
 
       <section className="relative z-10 mx-auto max-w-7xl px-5 py-10 lg:px-8">
         <div className="relative overflow-hidden rounded-[36px] border border-white/10 bg-gradient-to-br from-white/[.09] to-white/[.03] p-6 shadow-2xl sm:p-10">
+
           {/* Decorative glow */}
 
           <div
@@ -462,6 +477,7 @@ export default function Home() {
           />
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+
             <div>
               <p className="text-sm font-black uppercase tracking-[.25em] text-yellow-300">
                 🎲 Can't decide?
@@ -553,6 +569,7 @@ export default function Home() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-3">
+
           {/* Riddle */}
 
           <div id="riddles">
@@ -585,6 +602,7 @@ export default function Home() {
               answer="An octopus. 🐙"
             />
           </div>
+
         </div>
       </section>
 
@@ -604,6 +622,7 @@ export default function Home() {
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
+
           {/* Riddles */}
 
           <Link
@@ -642,7 +661,7 @@ export default function Home() {
             </h3>
 
             <p className="mt-2 text-white/60">
-              Tamil kadi jokes, English jokes and silly one-liners.
+              Tamil kadi jokes and silly one-liners.
             </p>
 
             <div className="mt-5 font-black text-orange-300">
@@ -665,13 +684,14 @@ export default function Home() {
             </h3>
 
             <p className="mt-2 text-white/60">
-              Animals, space, science, India, history and weird facts.
+              Animals, space, science, history and weird facts.
             </p>
 
             <div className="mt-5 font-black text-green-300">
               Feed My Curiosity →
             </div>
           </Link>
+
         </div>
       </section>
 
@@ -681,6 +701,7 @@ export default function Home() {
 
       <section className="relative z-10 mx-auto max-w-5xl px-5 pb-20">
         <div className="relative overflow-hidden rounded-[36px] border border-yellow-300/20 bg-gradient-to-br from-yellow-300/10 via-violet-600/10 to-orange-500/10 p-8 text-center sm:p-12">
+
           {/* Decorative glow */}
 
           <div
@@ -716,8 +737,11 @@ export default function Home() {
 
       <footer className="border-t border-white/10 bg-black/15">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 text-sm text-white/50 md:flex-row md:items-center md:justify-between lg:px-8">
+
           <div>
-            <b className="text-white">KADI RIDDLER</b>
+            <b className="text-white">
+              KADI RIDDLER
+            </b>
 
             <p className="mt-1">
               Think. Laugh. Get Tricked.
@@ -745,9 +769,19 @@ export default function Home() {
             >
               Amazing Facts
             </Link>
+
+            <Link
+              href="/search"
+              className="touch-manipulation transition hover:text-white"
+            >
+              Search
+            </Link>
           </div>
 
-          <p>© 2026 Kadi Riddler</p>
+          <p>
+            © 2026 Kadi Riddler
+          </p>
+
         </div>
       </footer>
     </main>
