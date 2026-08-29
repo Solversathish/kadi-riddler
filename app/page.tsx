@@ -219,14 +219,14 @@ export default function Home() {
           {/* Right Side - Search + Mobile Menu */}
           <div className="flex items-center gap-3">
 
-            {/* Search - visible on desktop AND mobile */}
-            <a
+            {/* SEARCH - DESKTOP */}
+<Link
   href="/search"
+  className="hidden size-12 place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/20 md:grid"
   aria-label="Search"
-  className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95"
 >
   🔍
-</a>
+</Link>
 
             {/* Mobile Menu Button */}
             <button
