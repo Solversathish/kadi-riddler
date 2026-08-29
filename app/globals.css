@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #070b25;
+  --panel: #10183b;
+  --panel-2: #161e49;
+  --text: #f8f9ff;
+  --muted: #b8bfdc;
+  --purple: #7c3aed;
+  --yellow: #ffd51a;
+  --orange: #ff8a00;
+  --green: #55c932;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  cursor: pointer;
+}
+
+button {
+  cursor: pointer;
+}
+
+.site-bg {
+  background:
+    radial-gradient(
+      circle at 20% 12%,
+      rgba(124, 58, 237, 0.22),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 82% 22%,
+      rgba(255, 213, 26, 0.09),
+      transparent 22%
+    ),
+    radial-gradient(
+      circle at 70% 72%,
+      rgba(85, 201, 50, 0.08),
+      transparent 26%
+    ),
+    var(--bg);
+}
+
+.doodle-bg {
+  background-image:
+    radial-gradient(
+      circle at 12% 20%,
+      rgba(255, 255, 255, 0.045) 0 2px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 72% 35%,
+      rgba(255, 255, 255, 0.04) 0 2px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 40% 80%,
+      rgba(255, 255, 255, 0.035) 0 2px,
+      transparent 2px
+    );
+
+  background-size:
+    44px 44px,
+    58px 58px,
+    70px 70px;
+}
+
+.hero-glow {
+  box-shadow: 0 0 80px rgba(124, 58, 237, 0.22);
+}
+
+.reveal-answer {
+  animation: reveal 0.28s ease-out;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-hover {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 767px) {
+  .card-hover:hover {
+    transform: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #070b25;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #303b70;
+  border-radius: 999px;
+}
