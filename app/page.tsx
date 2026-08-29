@@ -220,13 +220,13 @@ export default function Home() {
           <div className="flex items-center gap-3">
 
             {/* Search - visible on desktop AND mobile */}
-            <button
-              type="button"
-              aria-label="Search"
-              className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95"
-            >
-              🔍
-            </button>
+            <a
+  href="/search"
+  aria-label="Search"
+  className="grid size-12 touch-manipulation place-items-center rounded-full bg-white/10 text-xl transition hover:bg-white/15 active:scale-95"
+>
+  🔍
+</a>
 
             {/* Mobile Menu Button */}
             <button
