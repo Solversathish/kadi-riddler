@@ -2,17 +2,23 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import SearchBar from "../components/SearchBar";
 import { supabase } from "../supabase/client";
 
 type Riddle = {
   id: number;
   category: string;
   difficulty: string;
+
   question: string;
   answer: string;
+
+  // Support both camelCase and snake_case Supabase column names
   tanglishQuestion?: string;
   tanglishAnswer?: string;
+
+  tanglish_question?: string;
+  tanglish_answer?: string;
+
   likes?: number;
   shares?: number;
 };
@@ -28,12 +34,7 @@ const categories = [
 
 /* =========================================================
    PAGE WRAPPER
-   ---------------------------------------------------------
-   IMPORTANT:
-   useSearchParams() is used inside RiddlesContent.
-   Keeping it inside Suspense prevents the Next.js/Vercel
-   prerender error.
-========================================================= */
+   ========================================================= */
 
 export default function RiddlesPage() {
   return (
@@ -55,38 +56,75 @@ export default function RiddlesPage() {
 
 /* =========================================================
    RIDDLES CONTENT
-========================================================= */
+   ========================================================= */
 
 function RiddlesContent() {
   const searchParams = useSearchParams();
 
-  const globalSearch =
-    searchParams.get("search") || "";
+  /*
+    Global search comes from the SearchBar/header.
 
+    Example:
+    /riddles?search=kaalgal
+  */
+  const globalSearch = searchParams.get("search") || "";
+
+  /*
+    Optional highlighted riddle.
+    Used when sharing a particular riddle.
+  */
   const highlightId =
     Number(searchParams.get("highlight")) || null;
 
+  /* =========================================================
+     STATE
+     ========================================================= */
+
   const [riddles, setRiddles] = useState<Riddle[]>([]);
+
   const [selectedCategory, setSelectedCategory] =
     useState("All");
 
+  /*
+    Local search is kept separately so the page can work
+    even if a search input is later added here.
+  */
   const [search, setSearch] = useState("");
 
+  /*
+    Answers currently revealed.
+  */
   const [revealed, setRevealed] =
     useState<number[]>([]);
 
-  const [tamilLanguage, setTamilLanguage] =
-    useState<"Tamil" | "Tanglish">("Tamil");
+  /*
+    IMPORTANT:
+    Language is stored PER RIDDLE.
 
-  const [liked, setLiked] =
-    useState<number[]>([]);
+    Example:
+    {
+      1: "Tamil",
+      2: "Tanglish"
+    }
+  */
+  const [language, setLanguage] = useState<
+    Record<number, "Tamil" | "Tanglish">
+  >({});
 
+  /*
+    Riddles liked by this browser.
+  */
+  const [liked, setLiked] = useState<number[]>([]);
+
+  /*
+    Share loading state.
+  */
   const [sharingId, setSharingId] =
     useState<number | null>(null);
 
-  // --------------------------------------------------
-  // LOAD RIDDLES FROM SUPABASE
-  // --------------------------------------------------
+  /* =========================================================
+     LOAD RIDDLES
+     ========================================================= */
 
   useEffect(() => {
     async function loadRiddles() {
@@ -97,56 +135,113 @@ function RiddlesContent() {
 
       if (error) {
         console.error(
-          "Error loading riddles:",
+          "SUPABASE RIDDLES ERROR:",
           error
         );
-
         return;
       }
 
-      setRiddles(data || []);
+      const loadedRiddles = (data || []) as Riddle[];
+
+      setRiddles(loadedRiddles);
+
+      /*
+        Set every riddle to Tamil by default.
+      */
+      const initialLanguages: Record<
+        number,
+        "Tamil" | "Tanglish"
+      > = {};
+
+      loadedRiddles.forEach((riddle) => {
+        initialLanguages[riddle.id] = "Tamil";
+      });
+
+      setLanguage(initialLanguages);
     }
 
     loadRiddles();
   }, []);
 
-  // --------------------------------------------------
-  // APPLY GLOBAL SEARCH TO LOCAL SEARCH
-  // --------------------------------------------------
+  /* =========================================================
+     LOAD LIKED RIDDLES FROM LOCAL STORAGE
+     ========================================================= */
 
   useEffect(() => {
-    if (globalSearch) {
-      setSearch(globalSearch);
+    try {
+      const saved =
+        localStorage.getItem(
+          "kadi-liked-riddles"
+        );
+
+      if (!saved) {
+        return;
+      }
+
+      const parsed = JSON.parse(saved);
+
+      if (Array.isArray(parsed)) {
+        setLiked(parsed);
+      }
+    } catch {
+      // Ignore localStorage errors
     }
+  }, []);
+
+  /* =========================================================
+     GLOBAL SEARCH
+     ========================================================= */
+
+  /*
+    If the search bar in the header sends:
+
+      ?search=something
+
+    this updates the page search.
+
+    We also keep local search available.
+  */
+  useEffect(() => {
+    setSearch(globalSearch);
   }, [globalSearch]);
 
-  // --------------------------------------------------
-  // FILTER RIDDLES BY CATEGORY ONLY
-  // --------------------------------------------------
-  //
-  // IMPORTANT:
-  // Global search should NOT remove the other riddles.
-  // It only moves the matching riddle to the top and
-  // highlights it. This keeps all riddles visible,
-  // just like the Amazing Facts page.
 
-  const filteredRiddles = useMemo(() => {
-    if (selectedCategory === "All") {
-      return [...riddles];
-    }
+ /* =========================================================
+   CATEGORY FILTER
+   ---------------------------------------------------------
+   IMPORTANT:
+   Search should NOT remove other riddles.
 
-    return riddles.filter(
+   When a global search is used:
+   - Keep ALL riddles visible
+   - The matching riddle is moved to the top
+   - The matching riddle is highlighted
+   ========================================================= */
+
+const filteredRiddles = useMemo(() => {
+  let result = [...riddles];
+
+  /* -------------------------------------------------------
+     CATEGORY FILTER
+     ------------------------------------------------------- */
+
+  if (selectedCategory !== "All") {
+    result = result.filter(
       (riddle) =>
-        riddle.category === selectedCategory
+        (riddle.category || "").toLowerCase() ===
+        selectedCategory.toLowerCase()
     );
-  }, [
-    riddles,
-    selectedCategory,
-  ]);
+  }
 
-  // --------------------------------------------------
-  // MOVE GLOBAL SEARCH RESULT TO TOP
-  // --------------------------------------------------
+  return result;
+}, [
+  riddles,
+  selectedCategory,
+]);
+
+  /* =========================================================
+     MOVE HIGHLIGHTED RIDDLE TO TOP
+     ========================================================= */
 
   const orderedRiddles = useMemo(() => {
     if (!highlightId) {
@@ -174,12 +269,14 @@ function RiddlesContent() {
     highlightId,
   ]);
 
-  // --------------------------------------------------
-  // SCROLL TO GLOBAL SEARCH RESULT
-  // --------------------------------------------------
+  /* =========================================================
+     SCROLL TO HIGHLIGHTED RIDDLE
+     ========================================================= */
 
   useEffect(() => {
-    if (!highlightId) return;
+    if (!highlightId) {
+      return;
+    }
 
     const timer = setTimeout(() => {
       const element =
@@ -193,46 +290,85 @@ function RiddlesContent() {
           block: "center",
         });
       }
-    }, 400);
+    }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [
     highlightId,
     orderedRiddles,
   ]);
 
-  // --------------------------------------------------
-  // REVEAL ANSWER
-  // --------------------------------------------------
+  /* =========================================================
+     REVEAL / HIDE ANSWER
+     ========================================================= */
 
-  const toggleAnswer = (id: number) => {
-    setRevealed((current) =>
-      current.includes(id)
-        ? current.filter(
-            (item) => item !== id
-          )
-        : [...current, id]
-    );
-  };
+  function toggleAnswer(id: number) {
+    setRevealed((current) => {
+      if (current.includes(id)) {
+        return current.filter(
+          (item) => item !== id
+        );
+      }
 
-  // --------------------------------------------------
-  // LIKE
-  // --------------------------------------------------
+      return [...current, id];
+    });
+  }
 
-  const handleLike = async (
+  /* =========================================================
+     TAMIL / TANGLISH TOGGLE
+     ========================================================= */
+
+  function toggleLanguage(
+    id: number,
+    selectedLanguage:
+      | "Tamil"
+      | "Tanglish"
+  ) {
+    setLanguage((current) => ({
+      ...current,
+      [id]: selectedLanguage,
+    }));
+  }
+
+  /* =========================================================
+     LIKE
+     ========================================================= */
+
+  async function handleLike(
     riddle: Riddle
-  ) => {
+  ) {
+    /*
+      Prevent multiple likes from the same browser.
+    */
     if (liked.includes(riddle.id)) {
       return;
     }
 
-    setLiked((current) => [
-      ...current,
-      riddle.id,
-    ]);
+    const oldLikes = riddle.likes || 0;
+    const newLikes = oldLikes + 1;
 
-    const newLikes =
-      (riddle.likes || 0) + 1;
+    /*
+      Optimistic UI update.
+    */
+    setLiked((current) => {
+      const updated = [
+        ...current,
+        riddle.id,
+      ];
+
+      try {
+        localStorage.setItem(
+          "kadi-liked-riddles",
+          JSON.stringify(updated)
+        );
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      return updated;
+    });
 
     setRiddles((current) =>
       current.map((item) =>
@@ -245,6 +381,9 @@ function RiddlesContent() {
       )
     );
 
+    /*
+      Update Supabase.
+    */
     const { error } = await supabase
       .from("riddles")
       .update({
@@ -252,21 +391,54 @@ function RiddlesContent() {
       })
       .eq("id", riddle.id);
 
+    /*
+      If database update fails,
+      restore the old number.
+    */
     if (error) {
       console.error(
-        "Error updating like:",
+        "LIKE ERROR:",
         error
       );
+
+      setRiddles((current) =>
+        current.map((item) =>
+          item.id === riddle.id
+            ? {
+                ...item,
+                likes: oldLikes,
+              }
+            : item
+        )
+      );
+
+      setLiked((current) => {
+        const updated =
+          current.filter(
+            (id) => id !== riddle.id
+          );
+
+        try {
+          localStorage.setItem(
+            "kadi-liked-riddles",
+            JSON.stringify(updated)
+          );
+        } catch {
+          // Ignore
+        }
+
+        return updated;
+      });
     }
-  };
+  }
 
-  // --------------------------------------------------
-  // SHARE
-  // --------------------------------------------------
+  /* =========================================================
+     SHARE
+     ========================================================= */
 
-  const handleShare = async (
+  async function handleShare(
     riddle: Riddle
-  ) => {
+  ) {
     if (sharingId === riddle.id) {
       return;
     }
@@ -277,18 +449,42 @@ function RiddlesContent() {
       const shareUrl =
         `${window.location.origin}/riddles?highlight=${riddle.id}`;
 
-      if (navigator.share) {
+      const shareText =
+        `${riddle.question}\n\nCan you solve this?`;
+
+      /*
+        Mobile / supported browser sharing.
+      */
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.share
+      ) {
         await navigator.share({
           title: "Kadi Riddler",
-          text: riddle.question,
+          text: shareText,
           url: shareUrl,
         });
       } else {
-        await navigator.clipboard.writeText(
-          shareUrl
-        );
+        /*
+          Desktop fallback.
+        */
+        if (
+          navigator.clipboard &&
+          navigator.clipboard.writeText
+        ) {
+          await navigator.clipboard.writeText(
+            `${shareText}\n\n${shareUrl}`
+          );
+
+          alert(
+            "Riddle link copied!"
+          );
+        }
       }
 
+      /*
+        Increase share count.
+      */
       const newShares =
         (riddle.shares || 0) + 1;
 
@@ -303,30 +499,43 @@ function RiddlesContent() {
         )
       );
 
-      await supabase
-        .from("riddles")
-        .update({
-          shares: newShares,
-        })
-        .eq("id", riddle.id);
+      const { error } =
+        await supabase
+          .from("riddles")
+          .update({
+            shares: newShares,
+          })
+          .eq("id", riddle.id);
+
+      if (error) {
+        console.error(
+          "SHARE COUNT ERROR:",
+          error
+        );
+      }
     } catch (error) {
-      console.error(
+      /*
+        User cancelled share dialog.
+      */
+      console.log(
         "Share cancelled/error:",
         error
       );
     } finally {
       setSharingId(null);
     }
-  };
+  }
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
+  /* =========================================================
+     UI
+     ========================================================= */
 
   return (
     <main className="min-h-screen bg-[#07091f] text-white">
 
-      {/* HERO */}
+      {/* =====================================================
+          HERO
+      ===================================================== */}
 
       <section className="relative overflow-hidden">
 
@@ -354,14 +563,15 @@ function RiddlesContent() {
         </div>
       </section>
 
-      {/* CATEGORIES */}
+      {/* =====================================================
+          CATEGORIES
+      ===================================================== */}
 
       <section className="mx-auto max-w-7xl px-5">
 
         <div className="flex flex-wrap justify-center gap-3">
 
           {categories.map((category) => (
-
             <button
               key={category}
               type="button"
@@ -378,13 +588,15 @@ function RiddlesContent() {
             >
               {category}
             </button>
-
           ))}
 
         </div>
+
       </section>
 
-      {/* RIDDLES */}
+      {/* =====================================================
+          RIDDLES
+      ===================================================== */}
 
       <section className="mx-auto max-w-7xl px-5 py-14">
 
@@ -414,9 +626,11 @@ function RiddlesContent() {
 
         </div>
 
-        {/* SEARCH RESULT MESSAGE */}
+        {/* ===================================================
+            SEARCH RESULT MESSAGE
+        =================================================== */}
 
-        {globalSearch && (
+        {search && (
           <div className="mb-8 rounded-2xl border border-purple-400/20 bg-purple-400/10 px-5 py-4">
 
             <p className="text-sm text-white/60">
@@ -424,13 +638,15 @@ function RiddlesContent() {
             </p>
 
             <p className="mt-1 text-lg font-bold text-purple-300">
-              "{globalSearch}"
+              "{search}"
             </p>
 
           </div>
         )}
 
-        {/* CARDS */}
+        {/* ===================================================
+            RIDDLE CARDS
+        =================================================== */}
 
         <div className="grid gap-6 md:grid-cols-2">
 
@@ -447,22 +663,54 @@ function RiddlesContent() {
                 riddle.id;
 
               const isTamil =
-                riddle.category ===
+                (
+                  riddle.category ||
+                  ""
+                ).toLowerCase() ===
+                "tamil";
+
+              /*
+                Every riddle defaults to Tamil.
+              */
+              const currentLanguage =
+                language[riddle.id] ||
                 "Tamil";
 
+              /*
+                Get Tanglish data from either:
+                  tanglishQuestion
+                OR
+                  tanglish_question
+              */
+              const tanglishQuestion =
+                riddle.tanglishQuestion ||
+                riddle.tanglish_question ||
+                "";
+
+              const tanglishAnswer =
+                riddle.tanglishAnswer ||
+                riddle.tanglish_answer ||
+                "";
+
+              /*
+                Determine displayed question.
+              */
               const displayedQuestion =
                 isTamil &&
-                tamilLanguage ===
+                currentLanguage ===
                   "Tanglish"
-                  ? riddle.tanglish_question ||
+                  ? tanglishQuestion ||
                     riddle.question
                   : riddle.question;
 
+              /*
+                Determine displayed answer.
+              */
               const displayedAnswer =
                 isTamil &&
-                tamilLanguage ===
+                currentLanguage ===
                   "Tanglish"
-                  ? riddle.tanglish_answer ||
+                  ? tanglishAnswer ||
                     riddle.answer
                   : riddle.answer;
 
@@ -472,7 +720,6 @@ function RiddlesContent() {
                 );
 
               return (
-
                 <article
                   id={`riddle-${riddle.id}`}
                   key={riddle.id}
@@ -483,7 +730,9 @@ function RiddlesContent() {
                   }`}
                 >
 
-                  {/* SEARCH MATCH LABEL */}
+                  {/* =========================================
+                      SEARCH MATCH LABEL
+                  ========================================= */}
 
                   {isHighlighted && (
                     <div className="bg-purple-400 px-5 py-2 text-center text-sm font-black uppercase tracking-widest text-black">
@@ -493,7 +742,9 @@ function RiddlesContent() {
 
                   <div className="p-7">
 
-                    {/* CATEGORY */}
+                    {/* =======================================
+                        CATEGORY
+                    ======================================= */}
 
                     <div className="mb-6 flex items-center justify-between">
 
@@ -507,23 +758,27 @@ function RiddlesContent() {
 
                     </div>
 
-                    {/* TAMIL / TANGLISH */}
+                    {/* =======================================
+                        TAMIL / TANGLISH
+                    ======================================= */}
 
                     {isTamil && (
-
                       <div className="mb-6 flex justify-center">
 
                         <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
 
+                          {/* TAMIL BUTTON */}
+
                           <button
                             type="button"
                             onClick={() =>
-                              setTamilLanguage(
+                              toggleLanguage(
+                                riddle.id,
                                 "Tamil"
                               )
                             }
                             className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-                              tamilLanguage ===
+                              currentLanguage ===
                               "Tamil"
                                 ? "bg-purple-400 text-black"
                                 : "text-white/60 hover:text-white"
@@ -532,15 +787,18 @@ function RiddlesContent() {
                             தமிழ்
                           </button>
 
+                          {/* TANGLISH BUTTON */}
+
                           <button
                             type="button"
                             onClick={() =>
-                              setTamilLanguage(
+                              toggleLanguage(
+                                riddle.id,
                                 "Tanglish"
                               )
                             }
                             className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-                              tamilLanguage ===
+                              currentLanguage ===
                               "Tanglish"
                                 ? "bg-purple-400 text-black"
                                 : "text-white/60 hover:text-white"
@@ -554,22 +812,27 @@ function RiddlesContent() {
                       </div>
                     )}
 
-                    {/* QUESTION ICON */}
+                    {/* =======================================
+                        QUESTION ICON
+                    ======================================= */}
 
                     <div className="mb-6 text-4xl">
                       🤔
                     </div>
 
-                    {/* QUESTION */}
+                    {/* =======================================
+                        QUESTION
+                    ======================================= */}
 
                     <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
                       {displayedQuestion}
                     </h3>
 
-                    {/* ANSWER */}
+                    {/* =======================================
+                        ANSWER
+                    ======================================= */}
 
                     {isRevealed && (
-
                       <div className="mt-6 rounded-2xl border border-purple-400/20 bg-purple-400/10 p-5">
 
                         <p className="text-xs font-bold uppercase tracking-widest text-purple-400">
@@ -583,7 +846,9 @@ function RiddlesContent() {
                       </div>
                     )}
 
-                    {/* REVEAL */}
+                    {/* =======================================
+                        REVEAL BUTTON
+                    ======================================= */}
 
                     <button
                       type="button"
@@ -601,13 +866,17 @@ function RiddlesContent() {
 
                   </div>
 
-                  {/* CARD ACTIONS */}
+                  {/* =========================================
+                      CARD ACTIONS
+                  ========================================= */}
 
                   <div className="border-t border-white/10 px-6 py-5">
 
                     <div className="grid grid-cols-2 gap-3">
 
-                      {/* LIKE */}
+                      {/* =====================================
+                          LIKE
+                      ===================================== */}
 
                       <button
                         type="button"
@@ -633,9 +902,12 @@ function RiddlesContent() {
                           {riddle.likes ||
                             0}
                         </span>
+
                       </button>
 
-                      {/* SHARE */}
+                      {/* =====================================
+                          SHARE
+                      ===================================== */}
 
                       <button
                         type="button"
@@ -659,6 +931,7 @@ function RiddlesContent() {
                           {riddle.shares ||
                             0}
                         </span>
+
                       </button>
 
                     </div>
@@ -672,7 +945,9 @@ function RiddlesContent() {
 
         </div>
 
-        {/* NO RESULTS */}
+        {/* ===================================================
+            NO RESULTS
+        =================================================== */}
 
         {filteredRiddles.length ===
           0 && (
@@ -697,7 +972,9 @@ function RiddlesContent() {
 
       </section>
 
-      {/* CTA */}
+      {/* =====================================================
+          CTA
+      ===================================================== */}
 
       <section className="mx-auto max-w-5xl px-5 pb-20">
 
@@ -719,7 +996,9 @@ function RiddlesContent() {
 
       </section>
 
-      {/* FOOTER */}
+      {/* =====================================================
+          FOOTER
+      ===================================================== */}
 
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-white/40">
         © 2026 Kadi Riddler. Think.

@@ -1,11 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { riddles } from "../data/riddles";
 import { kadiJokes } from "../data/kadi-jokes";
 import { facts } from "../data/facts";
+import { supabase } from "../supabase/client";
+
+type SupabaseRiddle = {
+  id: number;
+  category?: string | null;
+  difficulty?: string | null;
+  question?: string | null;
+  answer?: string | null;
+
+  // Support both possible naming styles
+  tanglishQuestion?: string | null;
+  tanglishAnswer?: string | null;
+
+  tanglish_question?: string | null;
+  tanglish_answer?: string | null;
+};
 
 type SearchResult = {
   id: string;
@@ -22,6 +38,62 @@ export default function SearchBar() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
+  /*
+   * =========================================================
+   * RIDDLES FROM SUPABASE
+   * =========================================================
+   *
+   * IMPORTANT:
+   * New riddles are stored directly in Supabase.
+   *
+   * Therefore we MUST load riddles from Supabase here
+   * instead of importing ../data/riddles.
+   */
+  const [supabaseRiddles, setSupabaseRiddles] = useState<
+    SupabaseRiddle[]
+  >([]);
+
+  /*
+   * LOAD RIDDLES FROM SUPABASE
+   */
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadRiddles() {
+      try {
+        const { data, error } = await supabase
+          .from("riddles")
+          .select("*")
+          .order("id", { ascending: true });
+
+        if (error) {
+          console.error(
+            "SEARCH BAR - SUPABASE RIDDLES ERROR:",
+            error
+          );
+          return;
+        }
+
+        if (mounted) {
+          setSupabaseRiddles(
+            (data || []) as SupabaseRiddle[]
+          );
+        }
+      } catch (error) {
+        console.error(
+          "SEARCH BAR - FAILED TO LOAD RIDDLES:",
+          error
+        );
+      }
+    }
+
+    loadRiddles();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // --------------------------------------------------
   // GLOBAL SEARCH
   // --------------------------------------------------
@@ -29,42 +101,60 @@ export default function SearchBar() {
   const results = useMemo<SearchResult[]>(() => {
     const search = query.trim().toLowerCase();
 
-    if (!search) return [];
+    if (!search) {
+      return [];
+    }
 
-    // -------------------------------
+    // ==================================================
     // RIDDLES
-    // -------------------------------
+    // ==================================================
+    //
+    // IMPORTANT:
+    // These now come directly from Supabase.
+    //
 
-    const riddleResults: SearchResult[] = riddles
-      .filter((riddle) =>
-        [
-          riddle.question,
-          riddle.answer,
-          riddle.tanglishQuestion || "",
-          riddle.tanglishAnswer || "",
-          riddle.category,
-          riddle.difficulty,
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(search)
-      )
-      .map((riddle) => ({
-        id: `riddle-${riddle.id}`,
-        numericId: riddle.id,
-        type: "Riddle",
-        category: riddle.category,
-        title: riddle.question,
-        href: "/riddles",
-      }));
+    const riddleResults: SearchResult[] =
+      supabaseRiddles
+        .filter((riddle) => {
+          const tanglishQuestion =
+            riddle.tanglishQuestion ||
+            riddle.tanglish_question ||
+            "";
 
-    // -------------------------------
+          const tanglishAnswer =
+            riddle.tanglishAnswer ||
+            riddle.tanglish_answer ||
+            "";
+
+          const searchableText = [
+            riddle.question || "",
+            riddle.answer || "",
+            tanglishQuestion,
+            tanglishAnswer,
+            riddle.category || "",
+            riddle.difficulty || "",
+          ]
+            .join(" ")
+            .toLowerCase();
+
+          return searchableText.includes(search);
+        })
+        .map((riddle) => ({
+          id: `riddle-${riddle.id}`,
+          numericId: riddle.id,
+          type: "Riddle",
+          category: riddle.category || "Riddle",
+          title: riddle.question || "Untitled Riddle",
+          href: "/riddles",
+        }));
+
+    // ==================================================
     // KADI JOKES
-    // -------------------------------
+    // ==================================================
 
     const kadiResults: SearchResult[] = kadiJokes
-      .filter((joke) =>
-        [
+      .filter((joke) => {
+        const searchableText = [
           joke.question,
           joke.answer,
           joke.tanglishQuestion || "",
@@ -72,9 +162,10 @@ export default function SearchBar() {
           joke.category,
         ]
           .join(" ")
-          .toLowerCase()
-          .includes(search)
-      )
+          .toLowerCase();
+
+        return searchableText.includes(search);
+      })
       .map((joke) => ({
         id: `kadi-${joke.id}`,
         numericId: joke.id,
@@ -84,17 +175,22 @@ export default function SearchBar() {
         href: "/kadi-jokes",
       }));
 
-    // -------------------------------
+    // ==================================================
     // FACTS
-    // -------------------------------
+    // ==================================================
 
     const factResults: SearchResult[] = facts
-      .filter((fact) =>
-        [fact.fact, fact.detail, fact.category]
+      .filter((fact) => {
+        const searchableText = [
+          fact.fact,
+          fact.detail,
+          fact.category,
+        ]
           .join(" ")
-          .toLowerCase()
-          .includes(search)
-      )
+          .toLowerCase();
+
+        return searchableText.includes(search);
+      })
       .map((fact) => ({
         id: `fact-${fact.id}`,
         numericId: fact.id,
@@ -104,16 +200,16 @@ export default function SearchBar() {
         href: "/facts",
       }));
 
-    // -------------------------------
+    // ==================================================
     // GLOBAL RESULTS
-    // -------------------------------
+    // ==================================================
 
     return [
       ...riddleResults,
       ...kadiResults,
       ...factResults,
     ].slice(0, 6);
-  }, [query]);
+  }, [query, supabaseRiddles]);
 
   // --------------------------------------------------
   // NAVIGATE TO RESULT
@@ -122,7 +218,9 @@ export default function SearchBar() {
   function goToResult(result: SearchResult) {
     const search = query.trim();
 
-    if (!search) return;
+    if (!search) {
+      return;
+    }
 
     setFocused(false);
     setQuery("");
@@ -145,25 +243,24 @@ export default function SearchBar() {
 
     const search = query.trim();
 
-    if (!search) return;
+    if (!search) {
+      return;
+    }
 
     setFocused(false);
 
     /*
-      If there is an exact/global result,
-      go directly to the first matching result.
-    */
-
+     * If a matching result exists,
+     * go directly to the first result.
+     */
     if (results.length > 0) {
       goToResult(results[0]);
       return;
     }
 
     /*
-      If nothing was found, keep the user
-      on the current page.
-    */
-
+     * Nothing found.
+     */
     setFocused(false);
   }
 
@@ -184,16 +281,16 @@ export default function SearchBar() {
   function handleSeeAllResults() {
     const search = query.trim();
 
-    if (!search) return;
+    if (!search) {
+      return;
+    }
 
     setFocused(false);
     setQuery("");
 
     /*
-      For now, send to the first matching result.
-      We don't need a separate /search page.
-    */
-
+     * Send the user to the first matching result.
+     */
     if (results.length > 0) {
       const firstResult = results[0];
 
@@ -215,7 +312,6 @@ export default function SearchBar() {
       {/* SEARCH FORM */}
 
       <form onSubmit={handleSubmit}>
-
         <div className="flex items-center rounded-full border border-white/10 bg-white/10 px-4 py-2 transition focus-within:border-yellow-400/60 focus-within:bg-white/[0.12]">
 
           <span className="mr-2 text-lg">
@@ -242,7 +338,6 @@ export default function SearchBar() {
           />
 
         </div>
-
       </form>
 
       {/* ==================================================
@@ -250,15 +345,12 @@ export default function SearchBar() {
       ================================================== */}
 
       {focused && query.trim() && (
-
         <div className="absolute left-0 right-0 top-full z-[100] mt-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1030] shadow-2xl">
 
           {results.length > 0 ? (
-
             <div className="p-2">
 
               {results.map((result) => (
-
                 <button
                   key={result.id}
                   type="button"
@@ -266,9 +358,7 @@ export default function SearchBar() {
                     event.preventDefault();
                   }}
                   onClick={() =>
-                    handleSuggestionClick(
-                      result
-                    )
+                    handleSuggestionClick(result)
                   }
                   className="block w-full rounded-xl px-4 py-3 text-left transition hover:bg-white/10"
                 >
@@ -290,7 +380,6 @@ export default function SearchBar() {
                   </p>
 
                 </button>
-
               ))}
 
               {/* SEE ALL */}
@@ -300,16 +389,13 @@ export default function SearchBar() {
                 onMouseDown={(event) => {
                   event.preventDefault();
                 }}
-                onClick={
-                  handleSeeAllResults
-                }
+                onClick={handleSeeAllResults}
                 className="mt-1 w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-yellow-400 transition hover:bg-white/10"
               >
                 🔍 Go to first result →
               </button>
 
             </div>
-
           ) : (
 
             /* NO RESULTS */
@@ -333,7 +419,6 @@ export default function SearchBar() {
           )}
 
         </div>
-
       )}
 
     </div>
