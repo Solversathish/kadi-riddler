@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -19,7 +19,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function FactsPage() {
+function FactsPageContent() {
   const searchParams = useSearchParams();
 
   // ============================================
@@ -954,5 +954,18 @@ export default function FactsPage() {
       </footer>
 
     </main>
+  );
+}
+
+// Next.js requires useSearchParams() to be rendered inside a Suspense boundary.
+export default function FactsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#08091f] text-white" />
+      }
+    >
+      <FactsPageContent />
+    </Suspense>
   );
 }
