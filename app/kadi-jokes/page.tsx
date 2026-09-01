@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../supabase/client";
 
@@ -27,20 +27,24 @@ const categories = [
   "Dad Jokes",
 ];
 
-export default function KadiJokesPage() {
+/* =========================================================
+   MAIN KADI JOKES CONTENT
+   ========================================================= */
+
+function KadiJokesContent() {
   const searchParams = useSearchParams();
 
-  // ============================================
+  // ============================================================
   // GLOBAL SEARCH
-  // ============================================
+  // ============================================================
 
-  const globalSearch =
-    searchParams.get("search") || "";
+  const globalSearch = searchParams.get("search") || "";
 
   const highlightId =
     Number(searchParams.get("highlight")) || null;
 
   const [jokes, setJokes] = useState<Joke[]>([]);
+
   const [selectedCategory, setSelectedCategory] =
     useState("All");
 
@@ -63,9 +67,9 @@ export default function KadiJokesPage() {
   const [sharingJokes, setSharingJokes] =
     useState<number[]>([]);
 
-  // ============================================
+  // ============================================================
   // LOAD JOKES
-  // ============================================
+  // ============================================================
 
   const loadJokes = async () => {
     setLoading(true);
@@ -102,9 +106,9 @@ export default function KadiJokesPage() {
     loadJokes();
   }, []);
 
-  // ============================================
+  // ============================================================
   // FILTER JOKES
-  // ============================================
+  // ============================================================
 
   const filteredJokes =
     selectedCategory === "All"
@@ -115,12 +119,12 @@ export default function KadiJokesPage() {
             selectedCategory
         );
 
-  // ============================================
+  // ============================================================
   // GLOBAL SEARCH
   //
-  // Move the exact highlighted joke
-  // to the top of the list.
-  // ============================================
+  // Move matching joke to the top.
+  // Keep all other jokes underneath.
+  // ============================================================
 
   const orderedJokes = useMemo(() => {
     if (!highlightId) {
@@ -149,9 +153,9 @@ export default function KadiJokesPage() {
     highlightId,
   ]);
 
-  // ============================================
+  // ============================================================
   // SCROLL TO MATCHING RESULT
-  // ============================================
+  // ============================================================
 
   useEffect(() => {
     if (!highlightId) {
@@ -180,9 +184,9 @@ export default function KadiJokesPage() {
     orderedJokes,
   ]);
 
-  // ============================================
+  // ============================================================
   // REVEAL / HIDE ANSWER
-  // ============================================
+  // ============================================================
 
   const toggleAnswer = (
     id: number
@@ -196,15 +200,12 @@ export default function KadiJokesPage() {
     );
   };
 
-  // ============================================
+  // ============================================================
   // GET QUESTION
   //
-  // IMPORTANT:
-  // Tamil mode ONLY uses tamil_question
-  // Tanglish mode ONLY uses tanglish_question
-  //
-  // NO FALLBACK TO ENGLISH
-  // ============================================
+  // Tamil mode -> Tamil question
+  // Tanglish mode -> Tanglish question
+  // ============================================================
 
   const getQuestion = (
     joke: Joke
@@ -222,15 +223,12 @@ export default function KadiJokesPage() {
     );
   };
 
-  // ============================================
+  // ============================================================
   // GET ANSWER
   //
-  // IMPORTANT:
-  // Tamil mode ONLY uses tamil_answer
-  // Tanglish mode ONLY uses tanglish_answer
-  //
-  // NO FALLBACK TO ENGLISH
-  // ============================================
+  // Tamil mode -> Tamil answer
+  // Tanglish mode -> Tanglish answer
+  // ============================================================
 
   const getAnswer = (
     joke: Joke
@@ -248,9 +246,9 @@ export default function KadiJokesPage() {
     );
   };
 
-  // ============================================
+  // ============================================================
   // LIKE
-  // ============================================
+  // ============================================================
 
   const handleLike = async (
     id: number
@@ -325,9 +323,9 @@ export default function KadiJokesPage() {
     }
   };
 
-  // ============================================
+  // ============================================================
   // SHARE
-  // ============================================
+  // ============================================================
 
   const handleShare = async (
     joke: Joke
@@ -424,16 +422,16 @@ export default function KadiJokesPage() {
     }
   };
 
-  // ============================================
+  // ============================================================
   // PAGE
-  // ============================================
+  // ============================================================
 
   return (
     <main className="min-h-screen bg-[#07091f] text-white">
 
-      {/* ==========================================
+      {/* ======================================================
           HERO
-      ========================================== */}
+      ====================================================== */}
 
       <section className="relative overflow-hidden">
 
@@ -459,11 +457,12 @@ export default function KadiJokesPage() {
           </p>
 
         </div>
+
       </section>
 
-      {/* ==========================================
+      {/* ======================================================
           CATEGORIES
-      ========================================== */}
+      ====================================================== */}
 
       <section className="mx-auto max-w-7xl px-5">
 
@@ -497,9 +496,9 @@ export default function KadiJokesPage() {
 
       </section>
 
-      {/* ==========================================
+      {/* ======================================================
           JOKES
-      ========================================== */}
+      ====================================================== */}
 
       <section className="mx-auto max-w-7xl px-5 py-14">
 
@@ -528,9 +527,9 @@ export default function KadiJokesPage() {
 
         </div>
 
-        {/* ==========================================
+        {/* ====================================================
             GLOBAL SEARCH RESULT
-        ========================================== */}
+        ==================================================== */}
 
         {globalSearch && (
 
@@ -548,9 +547,9 @@ export default function KadiJokesPage() {
 
         )}
 
-        {/* ==========================================
+        {/* ====================================================
             LOADING
-        ========================================== */}
+        ==================================================== */}
 
         {loading && (
 
@@ -572,9 +571,9 @@ export default function KadiJokesPage() {
 
         )}
 
-        {/* ==========================================
+        {/* ====================================================
             ERROR
-        ========================================== */}
+        ==================================================== */}
 
         {!loading && error && (
 
@@ -604,307 +603,307 @@ export default function KadiJokesPage() {
 
         )}
 
-        {/* ==========================================
+        {/* ====================================================
             NO JOKES
-        ========================================== */}
+        ==================================================== */}
 
         {!loading &&
           !error &&
           orderedJokes.length ===
             0 && (
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-16 text-center">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-16 text-center">
 
-              <div className="mb-5 text-5xl">
-                👀
-              </div>
-
-              <h3 className="text-2xl font-bold">
-                No jokes found
-              </h3>
-
-              <p className="mt-3 text-white/50">
-                Try another category.
-              </p>
-
+            <div className="mb-5 text-5xl">
+              👀
             </div>
 
-          )}
+            <h3 className="text-2xl font-bold">
+              No jokes found
+            </h3>
 
-        {/* ==========================================
+            <p className="mt-3 text-white/50">
+              Try another category.
+            </p>
+
+          </div>
+
+        )}
+
+        {/* ====================================================
             JOKE CARDS
-        ========================================== */}
+        ==================================================== */}
 
         {!loading &&
           !error &&
           orderedJokes.length >
             0 && (
 
-            <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
 
-              {orderedJokes.map(
-                (joke) => {
+            {orderedJokes.map(
+              (joke) => {
 
-                  const isRevealed =
-                    revealed.includes(
-                      joke.id
-                    );
+                const isRevealed =
+                  revealed.includes(
+                    joke.id
+                  );
 
-                  const isTamil =
-                    joke.category ===
-                    "Tamil Kadi";
+                const isTamil =
+                  joke.category ===
+                  "Tamil Kadi";
 
-                  const isHighlighted =
-                    highlightId ===
-                    joke.id;
+                const isHighlighted =
+                  highlightId ===
+                  joke.id;
 
-                  return (
+                return (
 
-                    <article
-                      id={`kadi-joke-${joke.id}`}
-                      key={joke.id}
-                      className={`group rounded-3xl border p-7 shadow-xl transition hover:-translate-y-1 ${
-                        isHighlighted
-                          ? "border-orange-400 bg-orange-400/[0.12] shadow-orange-400/20 ring-2 ring-orange-400/60"
-                          : "border-white/10 bg-white/[0.06] hover:bg-white/[0.09]"
-                      }`}
-                    >
+                  <article
+                    id={`kadi-joke-${joke.id}`}
+                    key={joke.id}
+                    className={`group rounded-3xl border p-7 shadow-xl transition hover:-translate-y-1 ${
+                      isHighlighted
+                        ? "border-orange-400 bg-orange-400/[0.12] shadow-orange-400/20 ring-2 ring-orange-400/60"
+                        : "border-white/10 bg-white/[0.06] hover:bg-white/[0.09]"
+                    }`}
+                  >
 
-                      {/* ==================================
-                          MATCHING RESULT LABEL
-                      ================================== */}
+                    {/* ==================================================
+                        MATCHING RESULT LABEL
+                    ================================================== */}
 
-                      {isHighlighted && (
+                    {isHighlighted && (
 
-                        <div className="-mx-7 -mt-7 mb-6 rounded-t-3xl bg-orange-400 px-5 py-2 text-center text-sm font-black uppercase tracking-widest text-black">
-                          🔍 Matching Result
-                        </div>
-
-                      )}
-
-                      {/* ==================================
-                          CATEGORY
-                      ================================== */}
-
-                      <div className="mb-6 flex items-center justify-between">
-
-                        <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-bold text-orange-300">
-                          {joke.category}
-                        </span>
-
-                        <span className="text-2xl">
-                          😂
-                        </span>
-
+                      <div className="-mx-7 -mt-7 mb-6 rounded-t-3xl bg-orange-400 px-5 py-2 text-center text-sm font-black uppercase tracking-widest text-black">
+                        🔍 Matching Result
                       </div>
 
-                      {/* ==================================
-                          LANGUAGE TOGGLE
+                    )}
 
-                          ONLY:
-                          தமிழ்
-                          Tanglish
-                      ================================== */}
+                    {/* ==================================================
+                        CATEGORY
+                    ================================================== */}
 
-                      {isTamil && (
+                    <div className="mb-6 flex items-center justify-between">
 
-                        <div className="mb-6 flex justify-center">
+                      <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-bold text-orange-300">
+                        {joke.category}
+                      </span>
 
-                          <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
+                      <span className="text-2xl">
+                        😂
+                      </span>
 
-                            {/* TAMIL */}
+                    </div>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLanguage(
-                                  "Tamil"
-                                )
-                              }
-                              className={`rounded-full px-7 py-2 text-sm font-bold transition ${
-                                language ===
+                    {/* ==================================================
+                        LANGUAGE TOGGLE
+                    ================================================== */}
+
+                    {isTamil && (
+
+                      <div className="mb-6 flex justify-center">
+
+                        <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
+
+                          {/* TAMIL */}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLanguage(
                                 "Tamil"
-                                  ? "bg-orange-400 text-black"
-                                  : "text-white/60 hover:text-white"
-                              }`}
-                            >
-                              தமிழ்
-                            </button>
+                              )
+                            }
+                            className={`rounded-full px-7 py-2 text-sm font-bold transition ${
+                              language ===
+                              "Tamil"
+                                ? "bg-orange-400 text-black"
+                                : "text-white/60 hover:text-white"
+                            }`}
+                          >
+                            தமிழ்
+                          </button>
 
-                            {/* TANGLISH */}
+                          {/* TANGLISH */}
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLanguage(
-                                  "Tanglish"
-                                )
-                              }
-                              className={`rounded-full px-7 py-2 text-sm font-bold transition ${
-                                language ===
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLanguage(
                                 "Tanglish"
-                                  ? "bg-orange-400 text-black"
-                                  : "text-white/60 hover:text-white"
-                              }`}
-                            >
-                              Tanglish
-                            </button>
-
-                          </div>
+                              )
+                            }
+                            className={`rounded-full px-7 py-2 text-sm font-bold transition ${
+                              language ===
+                              "Tanglish"
+                                ? "bg-orange-400 text-black"
+                                : "text-white/60 hover:text-white"
+                            }`}
+                          >
+                            Tanglish
+                          </button>
 
                         </div>
 
-                      )}
-
-                      {/* ==================================
-                          QUESTION ICON
-                      ================================== */}
-
-                      <div className="mb-6 text-4xl">
-                        🤔
                       </div>
 
-                      {/* ==================================
-                          QUESTION
-                      ================================== */}
+                    )}
 
-                      <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
+                    {/* ==================================================
+                        QUESTION ICON
+                    ================================================== */}
 
-                        {isTamil
-                          ? getQuestion(
-                              joke
-                            )
-                          : joke.english_question ||
-                            "Question not available"}
+                    <div className="mb-6 text-4xl">
+                      🤔
+                    </div>
 
-                      </h3>
+                    {/* ==================================================
+                        QUESTION
+                    ================================================== */}
 
-                      {/* ==================================
-                          PUNCHLINE
-                      ================================== */}
+                    <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
 
-                      {isRevealed && (
+                      {isTamil
+                        ? getQuestion(
+                            joke
+                          )
+                        : joke.english_question ||
+                          "Question not available"}
 
-                        <div className="mt-6 rounded-2xl border border-orange-400/20 bg-orange-400/10 p-5">
+                    </h3>
 
-                          <p className="text-xs font-bold uppercase tracking-widest text-orange-400">
-                            😂 Punchline
-                          </p>
+                    {/* ==================================================
+                        PUNCHLINE
+                    ================================================== */}
 
-                          <p className="mt-2 text-xl font-black">
+                    {isRevealed && (
 
-                            {isTamil
-                              ? getAnswer(
-                                  joke
-                                )
-                              : joke.english_answer ||
-                                "Answer not available"}
+                      <div className="mt-6 rounded-2xl border border-orange-400/20 bg-orange-400/10 p-5">
 
-                          </p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-orange-400">
+                          😂 Punchline
+                        </p>
 
-                        </div>
+                        <p className="mt-2 text-xl font-black">
 
-                      )}
+                          {isTamil
+                            ? getAnswer(
+                                joke
+                              )
+                            : joke.english_answer ||
+                              "Answer not available"}
 
-                      {/* ==================================
-                          REVEAL BUTTON
-                      ================================== */}
+                        </p>
+
+                      </div>
+
+                    )}
+
+                    {/* ==================================================
+                        REVEAL BUTTON
+                    ================================================== */}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleAnswer(
+                          joke.id
+                        )
+                      }
+                      className="mt-7 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-400 px-5 py-4 font-bold text-black transition hover:scale-[1.02]"
+                    >
+                      {isRevealed
+                        ? "🙈 Hide Punchline"
+                        : "😂 Reveal Punchline"}
+                    </button>
+
+                    {/* ==================================================
+                        LIKE + SHARE
+                    ================================================== */}
+
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+
+                      {/* LIKE */}
 
                       <button
                         type="button"
                         onClick={() =>
-                          toggleAnswer(
+                          handleLike(
                             joke.id
                           )
                         }
-                        className="mt-7 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-400 px-5 py-4 font-bold text-black transition hover:scale-[1.02]"
+                        disabled={likedJokes.includes(
+                          joke.id
+                        )}
+                        className={`rounded-2xl border px-5 py-4 font-bold transition ${
+                          likedJokes.includes(
+                            joke.id
+                          )
+                            ? "border-pink-400/30 bg-pink-500/20 text-pink-300"
+                            : "border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                        }`}
                       >
-                        {isRevealed
-                          ? "🙈 Hide Punchline"
-                          : "😂 Reveal Punchline"}
+
+                        {likedJokes.includes(
+                          joke.id
+                        )
+                          ? "❤️ Liked"
+                          : "🤍 Like"}{" "}
+
+                        <span className="ml-1 text-white/50">
+                          {joke.likes ||
+                            0}
+                        </span>
+
                       </button>
 
-                      {/* ==================================
-                          LIKE + SHARE
-                      ================================== */}
+                      {/* SHARE */}
 
-                      <div className="mt-5 grid grid-cols-2 gap-3">
-
-                        {/* LIKE */}
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleLike(
-                              joke.id
-                            )
-                          }
-                          disabled={likedJokes.includes(
-                            joke.id
-                          )}
-                          className={`rounded-2xl border px-5 py-4 font-bold transition ${
-                            likedJokes.includes(
-                              joke.id
-                            )
-                              ? "border-pink-400/30 bg-pink-500/20 text-pink-300"
-                              : "border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
-                          }`}
-                        >
-                          {likedJokes.includes(
-                            joke.id
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleShare(
+                            joke
                           )
-                            ? "❤️ Liked"
-                            : "🤍 Like"}{" "}
+                        }
+                        disabled={sharingJokes.includes(
+                          joke.id
+                        )}
+                        className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 font-bold text-white transition hover:bg-white/10"
+                      >
 
-                          <span className="ml-1 text-white/50">
-                            {joke.likes ||
-                              0}
-                          </span>
-                        </button>
+                        {sharingJokes.includes(
+                          joke.id
+                        )
+                          ? "⏳ Sharing..."
+                          : "🔗 Share"}{" "}
 
-                        {/* SHARE */}
+                        <span className="ml-1 text-white/50">
+                          {joke.shares ||
+                            0}
+                        </span>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleShare(
-                              joke
-                            )
-                          }
-                          disabled={sharingJokes.includes(
-                            joke.id
-                          )}
-                          className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 font-bold text-white transition hover:bg-white/10"
-                        >
-                          {sharingJokes.includes(
-                            joke.id
-                          )
-                            ? "⏳ Sharing..."
-                            : "🔗 Share"}{" "}
+                      </button>
 
-                          <span className="ml-1 text-white/50">
-                            {joke.shares ||
-                              0}
-                          </span>
-                        </button>
+                    </div>
 
-                      </div>
+                  </article>
 
-                    </article>
+                );
+              }
+            )}
 
-                  );
-                }
-              )}
+          </div>
 
-            </div>
-
-          )}
+        )}
 
       </section>
 
-      {/* ==========================================
+      {/* ======================================================
           BOTTOM CTA
-      ========================================== */}
+      ====================================================== */}
 
       <section className="mx-auto max-w-5xl px-5 pb-20">
 
@@ -928,9 +927,9 @@ export default function KadiJokesPage() {
 
       </section>
 
-      {/* ==========================================
+      {/* ======================================================
           FOOTER
-      ========================================== */}
+      ====================================================== */}
 
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-white/40">
         © 2026 Kadi Riddler. Think. Laugh.
@@ -938,5 +937,40 @@ export default function KadiJokesPage() {
       </footer>
 
     </main>
+  );
+}
+
+/* =========================================================
+   SUSPENSE WRAPPER
+   IMPORTANT FOR NEXT.JS 16
+   ========================================================= */
+
+export default function KadiJokesPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#07091f] text-white">
+          <div className="flex min-h-screen items-center justify-center">
+            <div className="text-center">
+
+              <div className="mb-5 animate-bounce text-5xl">
+                😂
+              </div>
+
+              <h2 className="text-2xl font-bold">
+                Loading Kadi Jokes...
+              </h2>
+
+              <p className="mt-2 text-white/50">
+                Getting the terrible jokes ready!
+              </p>
+
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <KadiJokesContent />
+    </Suspense>
   );
 }

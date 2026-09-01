@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import SearchBar from "../components/SearchBar";
 import { supabase } from "../supabase/client";
@@ -26,7 +26,38 @@ const categories = [
   "Tricky",
 ];
 
+/* =========================================================
+   PAGE WRAPPER
+   ---------------------------------------------------------
+   IMPORTANT:
+   useSearchParams() is used inside RiddlesContent.
+   Keeping it inside Suspense prevents the Next.js/Vercel
+   prerender error.
+========================================================= */
+
 export default function RiddlesPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#07091f] text-white">
+          <div className="flex min-h-screen items-center justify-center">
+            <div className="text-lg font-bold text-white/60">
+              Loading riddles...
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <RiddlesContent />
+    </Suspense>
+  );
+}
+
+/* =========================================================
+   RIDDLES CONTENT
+========================================================= */
+
+function RiddlesContent() {
   const searchParams = useSearchParams();
 
   const globalSearch =
@@ -69,6 +100,7 @@ export default function RiddlesPage() {
           "Error loading riddles:",
           error
         );
+
         return;
       }
 
