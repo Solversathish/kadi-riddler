@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -10,6 +9,7 @@ import { facts } from "../data/facts";
 
 type SearchResult = {
   id: string;
+  numericId: number;
   type: "Riddle" | "Kadi Joke" | "Fact";
   category: string;
   title: string;
@@ -22,10 +22,18 @@ export default function SearchBar() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
+  // --------------------------------------------------
+  // GLOBAL SEARCH
+  // --------------------------------------------------
+
   const results = useMemo<SearchResult[]>(() => {
     const search = query.trim().toLowerCase();
 
     if (!search) return [];
+
+    // -------------------------------
+    // RIDDLES
+    // -------------------------------
 
     const riddleResults: SearchResult[] = riddles
       .filter((riddle) =>
@@ -43,11 +51,16 @@ export default function SearchBar() {
       )
       .map((riddle) => ({
         id: `riddle-${riddle.id}`,
+        numericId: riddle.id,
         type: "Riddle",
         category: riddle.category,
         title: riddle.question,
         href: "/riddles",
       }));
+
+    // -------------------------------
+    // KADI JOKES
+    // -------------------------------
 
     const kadiResults: SearchResult[] = kadiJokes
       .filter((joke) =>
@@ -64,11 +77,16 @@ export default function SearchBar() {
       )
       .map((joke) => ({
         id: `kadi-${joke.id}`,
+        numericId: joke.id,
         type: "Kadi Joke",
         category: joke.category,
         title: joke.question,
         href: "/kadi-jokes",
       }));
+
+    // -------------------------------
+    // FACTS
+    // -------------------------------
 
     const factResults: SearchResult[] = facts
       .filter((fact) =>
@@ -79,11 +97,16 @@ export default function SearchBar() {
       )
       .map((fact) => ({
         id: `fact-${fact.id}`,
+        numericId: fact.id,
         type: "Fact",
         category: fact.category,
         title: fact.fact,
         href: "/facts",
       }));
+
+    // -------------------------------
+    // GLOBAL RESULTS
+    // -------------------------------
 
     return [
       ...riddleResults,
@@ -92,65 +115,105 @@ export default function SearchBar() {
     ].slice(0, 6);
   }, [query]);
 
-  /* SEARCH SUBMIT */
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  // --------------------------------------------------
+  // NAVIGATE TO RESULT
+  // --------------------------------------------------
+
+  function goToResult(result: SearchResult) {
+    const search = query.trim();
+
+    if (!search) return;
+
+    setFocused(false);
+    setQuery("");
+
+    router.push(
+      `${result.href}?search=${encodeURIComponent(
+        search
+      )}&highlight=${result.numericId}`
+    );
+  }
+
+  // --------------------------------------------------
+  // SEARCH SUBMIT
+  // --------------------------------------------------
+
+  function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     const search = query.trim();
 
     if (!search) return;
 
-    // Close suggestions
     setFocused(false);
 
-    // Clear old search text
-    setQuery("");
+    /*
+      If there is an exact/global result,
+      go directly to the first matching result.
+    */
 
-    // Go to search page
-    router.push(`/search?q=${encodeURIComponent(search)}`);
-  };
+    if (results.length > 0) {
+      goToResult(results[0]);
+      return;
+    }
 
-  /* SUGGESTION CLICK */
-  const handleSuggestionClick = (result: SearchResult) => {
+    /*
+      If nothing was found, keep the user
+      on the current page.
+    */
+
+    setFocused(false);
+  }
+
+  // --------------------------------------------------
+  // SUGGESTION CLICK
+  // --------------------------------------------------
+
+  function handleSuggestionClick(
+    result: SearchResult
+  ) {
+    goToResult(result);
+  }
+
+  // --------------------------------------------------
+  // SEE ALL RESULTS
+  // --------------------------------------------------
+
+  function handleSeeAllResults() {
     const search = query.trim();
 
     if (!search) return;
 
-    // Close suggestions
     setFocused(false);
-
-    // IMPORTANT:
-    // Clear the old search so the next search starts fresh
     setQuery("");
 
-    // Navigate to the relevant page
-    router.push(
-      `${result.href}?search=${encodeURIComponent(search)}`
-    );
-  };
+    /*
+      For now, send to the first matching result.
+      We don't need a separate /search page.
+    */
 
-  /* SEE ALL RESULTS */
-  const handleSeeAllResults = () => {
-    const search = query.trim();
+    if (results.length > 0) {
+      const firstResult = results[0];
 
-    if (!search) return;
+      router.push(
+        `${firstResult.href}?search=${encodeURIComponent(
+          search
+        )}&highlight=${firstResult.numericId}`
+      );
+    }
+  }
 
-    // Close suggestions
-    setFocused(false);
-
-    // Clear old search
-    setQuery("");
-
-    // Go to complete search results
-    router.push(
-      `/search?q=${encodeURIComponent(search)}`
-    );
-  };
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
 
   return (
     <div className="relative w-full max-w-md">
 
       {/* SEARCH FORM */}
+
       <form onSubmit={handleSubmit}>
 
         <div className="flex items-center rounded-full border border-white/10 bg-white/10 px-4 py-2 transition focus-within:border-yellow-400/60 focus-within:bg-white/[0.12]">
@@ -173,7 +236,7 @@ export default function SearchBar() {
               }, 200);
             }}
             placeholder="Search..."
-            aria-label="Search"
+            aria-label="Global Search"
             autoComplete="off"
             className="w-full bg-transparent py-1 text-sm text-white outline-none placeholder:text-white/40"
           />
@@ -182,8 +245,12 @@ export default function SearchBar() {
 
       </form>
 
-      {/* LIVE SEARCH SUGGESTIONS */}
+      {/* ==================================================
+          LIVE GLOBAL SEARCH RESULTS
+      ================================================== */}
+
       {focused && query.trim() && (
+
         <div className="absolute left-0 right-0 top-full z-[100] mt-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1030] shadow-2xl">
 
           {results.length > 0 ? (
@@ -192,16 +259,18 @@ export default function SearchBar() {
 
               {results.map((result) => (
 
-                <Link
+                <button
                   key={result.id}
-                  href={`${result.href}?search=${encodeURIComponent(
-                    query.trim()
-                  )}`}
+                  type="button"
                   onMouseDown={(event) => {
                     event.preventDefault();
-                    handleSuggestionClick(result);
                   }}
-                  className="block rounded-xl px-4 py-3 transition hover:bg-white/10"
+                  onClick={() =>
+                    handleSuggestionClick(
+                      result
+                    )
+                  }
+                  className="block w-full rounded-xl px-4 py-3 text-left transition hover:bg-white/10"
                 >
 
                   <div className="flex items-center gap-2">
@@ -220,20 +289,23 @@ export default function SearchBar() {
                     {result.title}
                   </p>
 
-                </Link>
+                </button>
 
               ))}
 
-              {/* SEE ALL RESULTS */}
+              {/* SEE ALL */}
+
               <button
                 type="button"
                 onMouseDown={(event) => {
                   event.preventDefault();
                 }}
-                onClick={handleSeeAllResults}
+                onClick={
+                  handleSeeAllResults
+                }
                 className="mt-1 w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-yellow-400 transition hover:bg-white/10"
               >
-                🔍 See all results →
+                🔍 Go to first result →
               </button>
 
             </div>
@@ -241,6 +313,7 @@ export default function SearchBar() {
           ) : (
 
             /* NO RESULTS */
+
             <div className="px-4 py-5 text-center">
 
               <div className="text-2xl">
@@ -260,6 +333,7 @@ export default function SearchBar() {
           )}
 
         </div>
+
       )}
 
     </div>

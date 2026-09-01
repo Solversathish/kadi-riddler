@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import SearchBar from "../components/SearchBar";
 import { supabase } from "../supabase/client";
 
 type Riddle = {
@@ -9,14 +11,13 @@ type Riddle = {
   difficulty: string;
   question: string;
   answer: string;
-  tanglish_question?: string | null;
-  tanglish_answer?: string | null;
-  likes: number;
-  shares: number;
-  created_at?: string;
+  tanglishQuestion?: string;
+  tanglishAnswer?: string;
+  likes?: number;
+  shares?: number;
 };
 
-const CATEGORIES = [
+const categories = [
   "All",
   "English",
   "Tamil",
@@ -26,216 +27,238 @@ const CATEGORIES = [
 ];
 
 export default function RiddlesPage() {
+  const searchParams = useSearchParams();
+
+  const globalSearch =
+    searchParams.get("search") || "";
+
+  const highlightId =
+    Number(searchParams.get("highlight")) || null;
+
   const [riddles, setRiddles] = useState<Riddle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [selectedCategory, setSelectedCategory] =
+    useState("All");
+
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [openAnswers, setOpenAnswers] = useState<number[]>([]);
-  const [likedRiddles, setLikedRiddles] = useState<number[]>([]);
-  const [language, setLanguage] = useState<
-    Record<number, "tamil" | "tanglish">
-  >({});
-  const [sharingId, setSharingId] = useState<number | null>(null);
+
+  const [revealed, setRevealed] =
+    useState<number[]>([]);
+
+  const [tamilLanguage, setTamilLanguage] =
+    useState<"Tamil" | "Tanglish">("Tamil");
+
+  const [liked, setLiked] =
+    useState<number[]>([]);
+
+  const [sharingId, setSharingId] =
+    useState<number | null>(null);
 
   // --------------------------------------------------
-  // LOAD RIDDLES
+  // LOAD RIDDLES FROM SUPABASE
   // --------------------------------------------------
 
   useEffect(() => {
-    loadRiddles();
+    async function loadRiddles() {
+      const { data, error } = await supabase
+        .from("riddles")
+        .select("*")
+        .order("id", { ascending: true });
 
-    // Restore liked riddles from browser
-    try {
-      const saved = localStorage.getItem("kadi-liked-riddles");
-
-      if (saved) {
-        setLikedRiddles(JSON.parse(saved));
+      if (error) {
+        console.error(
+          "Error loading riddles:",
+          error
+        );
+        return;
       }
-    } catch {
-      // Ignore localStorage errors
+
+      setRiddles(data || []);
     }
+
+    loadRiddles();
   }, []);
 
-  async function loadRiddles() {
-    setLoading(true);
-    setError("");
+  // --------------------------------------------------
+  // APPLY GLOBAL SEARCH TO LOCAL SEARCH
+  // --------------------------------------------------
 
-    const { data, error } = await supabase
-      .from("riddles")
-      .select("*")
-      .order("id", { ascending: true });
-
-    if (error) {
-      console.error("SUPABASE RIDDLES ERROR:", error);
-      setError(error.message);
-      setLoading(false);
-      return;
+  useEffect(() => {
+    if (globalSearch) {
+      setSearch(globalSearch);
     }
-
-    setRiddles((data || []) as Riddle[]);
-    setLoading(false);
-  }
+  }, [globalSearch]);
 
   // --------------------------------------------------
-  // SEARCH + CATEGORY FILTER
+  // FILTER RIDDLES BY CATEGORY ONLY
   // --------------------------------------------------
+  //
+  // IMPORTANT:
+  // Global search should NOT remove the other riddles.
+  // It only moves the matching riddle to the top and
+  // highlights it. This keeps all riddles visible,
+  // just like the Amazing Facts page.
 
   const filteredRiddles = useMemo(() => {
-    const searchText = search.trim().toLowerCase();
+    if (selectedCategory === "All") {
+      return [...riddles];
+    }
 
-    return riddles.filter((riddle) => {
-      const matchesCategory =
-        selectedCategory === "All" ||
-        riddle.category?.toLowerCase() ===
-          selectedCategory.toLowerCase();
-
-      const matchesSearch =
-        searchText === "" ||
-        riddle.question?.toLowerCase().includes(searchText) ||
-        riddle.answer?.toLowerCase().includes(searchText) ||
-        riddle.category?.toLowerCase().includes(searchText) ||
-        riddle.difficulty?.toLowerCase().includes(searchText);
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [riddles, search, selectedCategory]);
+    return riddles.filter(
+      (riddle) =>
+        riddle.category === selectedCategory
+    );
+  }, [
+    riddles,
+    selectedCategory,
+  ]);
 
   // --------------------------------------------------
-  // ANSWER
+  // MOVE GLOBAL SEARCH RESULT TO TOP
   // --------------------------------------------------
 
-  function toggleAnswer(id: number) {
-    setOpenAnswers((current) =>
+  const orderedRiddles = useMemo(() => {
+    if (!highlightId) {
+      return filteredRiddles;
+    }
+
+    const highlighted = filteredRiddles.find(
+      (riddle) =>
+        riddle.id === highlightId
+    );
+
+    if (!highlighted) {
+      return filteredRiddles;
+    }
+
+    return [
+      highlighted,
+      ...filteredRiddles.filter(
+        (riddle) =>
+          riddle.id !== highlightId
+      ),
+    ];
+  }, [
+    filteredRiddles,
+    highlightId,
+  ]);
+
+  // --------------------------------------------------
+  // SCROLL TO GLOBAL SEARCH RESULT
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!highlightId) return;
+
+    const timer = setTimeout(() => {
+      const element =
+        document.getElementById(
+          `riddle-${highlightId}`
+        );
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [
+    highlightId,
+    orderedRiddles,
+  ]);
+
+  // --------------------------------------------------
+  // REVEAL ANSWER
+  // --------------------------------------------------
+
+  const toggleAnswer = (id: number) => {
+    setRevealed((current) =>
       current.includes(id)
-        ? current.filter((item) => item !== id)
+        ? current.filter(
+            (item) => item !== id
+          )
         : [...current, id]
     );
-  }
-
-  // --------------------------------------------------
-  // TAMIL / TANGLISH TOGGLE
-  // --------------------------------------------------
-
-  function toggleLanguage(id: number) {
-    setLanguage((current) => ({
-      ...current,
-      [id]:
-        current[id] === "tanglish"
-          ? "tamil"
-          : "tanglish",
-    }));
-  }
+  };
 
   // --------------------------------------------------
   // LIKE
   // --------------------------------------------------
 
-  async function handleLike(riddle: Riddle) {
-    // Prevent liking the same riddle multiple times
-    if (likedRiddles.includes(riddle.id)) {
+  const handleLike = async (
+    riddle: Riddle
+  ) => {
+    if (liked.includes(riddle.id)) {
       return;
     }
 
-    const newLikes = (riddle.likes || 0) + 1;
+    setLiked((current) => [
+      ...current,
+      riddle.id,
+    ]);
 
-    // Optimistic UI update
+    const newLikes =
+      (riddle.likes || 0) + 1;
+
     setRiddles((current) =>
       current.map((item) =>
         item.id === riddle.id
-          ? { ...item, likes: newLikes }
+          ? {
+              ...item,
+              likes: newLikes,
+            }
           : item
       )
     );
 
-    const newLikedList = [
-      ...likedRiddles,
-      riddle.id,
-    ];
-
-    setLikedRiddles(newLikedList);
-
-    try {
-      localStorage.setItem(
-        "kadi-liked-riddles",
-        JSON.stringify(newLikedList)
-      );
-    } catch {
-      // Ignore localStorage errors
-    }
-
-    // Update Supabase
     const { error } = await supabase
       .from("riddles")
-      .update({ likes: newLikes })
+      .update({
+        likes: newLikes,
+      })
       .eq("id", riddle.id);
 
     if (error) {
-      console.error("LIKE ERROR:", error);
-
-      // Roll back if database update fails
-      setRiddles((current) =>
-        current.map((item) =>
-          item.id === riddle.id
-            ? {
-                ...item,
-                likes: riddle.likes || 0,
-              }
-            : item
-        )
+      console.error(
+        "Error updating like:",
+        error
       );
-
-      const rollbackList = likedRiddles;
-
-      setLikedRiddles(rollbackList);
-
-      try {
-        localStorage.setItem(
-          "kadi-liked-riddles",
-          JSON.stringify(rollbackList)
-        );
-      } catch {
-        // Ignore
-      }
     }
-  }
+  };
 
   // --------------------------------------------------
   // SHARE
   // --------------------------------------------------
 
-  async function handleShare(riddle: Riddle) {
+  const handleShare = async (
+    riddle: Riddle
+  ) => {
+    if (sharingId === riddle.id) {
+      return;
+    }
+
     setSharingId(riddle.id);
 
-    const shareUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/riddles#riddle-${riddle.id}`
-        : "";
-
-    const shareText = `${riddle.question}\n\nCan you solve this?`;
-
     try {
-      // Native mobile/browser share
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.share
-      ) {
+      const shareUrl =
+        `${window.location.origin}/riddles?highlight=${riddle.id}`;
+
+      if (navigator.share) {
         await navigator.share({
           title: "Kadi Riddler",
-          text: shareText,
+          text: riddle.question,
           url: shareUrl,
         });
       } else {
-        // Desktop fallback
         await navigator.clipboard.writeText(
-          `${shareText}\n\n${shareUrl}`
+          shareUrl
         );
-
-        alert("Riddle link copied!");
       }
 
-      // Increase share count
-      const newShares = (riddle.shares || 0) + 1;
+      const newShares =
+        (riddle.shares || 0) + 1;
 
       setRiddles((current) =>
         current.map((item) =>
@@ -248,614 +271,428 @@ export default function RiddlesPage() {
         )
       );
 
-      const { error } = await supabase
+      await supabase
         .from("riddles")
-        .update({ shares: newShares })
+        .update({
+          shares: newShares,
+        })
         .eq("id", riddle.id);
-
-      if (error) {
-        console.error(
-          "SHARE COUNT ERROR:",
-          error
-        );
-      }
     } catch (error) {
-      // User cancelled share dialog
-      console.log(
-        "Share cancelled:",
+      console.error(
+        "Share cancelled/error:",
         error
       );
     } finally {
       setSharingId(null);
     }
-  }
+  };
 
   // --------------------------------------------------
-  // CATEGORY
-  // --------------------------------------------------
-
-  function handleCategory(category: string) {
-    setSelectedCategory(category);
-
-    // Clear search when selecting a category
-    setSearch("");
-
-    // We do NOT use router.push().
-    // This keeps everything on /riddles.
-  }
-
-  // --------------------------------------------------
-  // CLEAR FILTERS
-  // --------------------------------------------------
-
-  function clearFilters() {
-    setSearch("");
-    setSelectedCategory("All");
-  }
-
-  // --------------------------------------------------
-  // LOADING
-  // --------------------------------------------------
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#07091f] text-white">
-        <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6">
-          <div className="text-center">
-
-            <div className="mb-5 animate-bounce text-6xl">
-              🧩
-            </div>
-
-            <h2 className="text-2xl font-bold">
-              Loading riddles...
-            </h2>
-
-            <p className="mt-2 text-white/50">
-              Getting your brain teasers ready
-            </p>
-
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // --------------------------------------------------
-  // PAGE
+  // UI
   // --------------------------------------------------
 
   return (
     <main className="min-h-screen bg-[#07091f] text-white">
 
-      {/* BACKGROUND GLOW */}
+      {/* HERO */}
 
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      <section className="relative overflow-hidden">
 
-        <div className="absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-purple-600/10 blur-[140px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#35206b,transparent_55%)]" />
 
-        <div className="absolute right-0 top-[500px] h-[400px] w-[400px] rounded-full bg-pink-500/5 blur-[130px]" />
+        <div className="relative mx-auto max-w-5xl px-5 pb-14 pt-20 text-center">
 
-      </div>
+          <div className="mb-5 text-6xl">
+            🧩
+          </div>
 
-      <div className="relative mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-10">
+          <h1 className="text-5xl font-black tracking-tight md:text-7xl">
+            RIDDLE{" "}
+            <span className="text-purple-400">
+              TIME!
+            </span>
+          </h1>
 
-        {/* ==================================================
-            HERO
-        ================================================== */}
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">
+            Think carefully. Some are easy,
+            some are tricky, and some will
+            completely fool you! 🧠
+          </p>
 
-        <section className="relative overflow-hidden pb-14 pt-20">
+        </div>
+      </section>
 
-          {/* Hero glow */}
+      {/* CATEGORIES */}
 
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#3b176f,transparent_55%)]" />
+      <section className="mx-auto max-w-7xl px-5">
 
-          <div className="relative mx-auto max-w-5xl px-5 text-center">
+        <div className="flex flex-wrap justify-center gap-3">
 
-            {/* PUZZLE ICON */}
+          {categories.map((category) => (
 
-            <div className="mb-5 text-6xl">
-              🧩
-            </div>
+            <button
+              key={category}
+              type="button"
+              onClick={() =>
+                setSelectedCategory(
+                  category
+                )
+              }
+              className={`rounded-full px-5 py-3 text-sm font-bold transition ${
+                selectedCategory === category
+                  ? "bg-purple-400 text-black shadow-lg shadow-purple-400/20"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              {category}
+            </button>
 
-            {/* HERO TITLE */}
+          ))}
 
-            <h1 className="text-5xl font-black tracking-tight sm:text-6xl md:text-7xl">
+        </div>
+      </section>
 
-              RIDDLE{" "}
+      {/* RIDDLES */}
 
-              <span className="text-yellow-400">
-                TIME!
-              </span>
+      <section className="mx-auto max-w-7xl px-5 py-14">
 
-            </h1>
+        <div className="mb-8 flex items-end justify-between">
 
-            {/* HERO SUBTITLE */}
+          <div>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">
-
-              Think carefully, trust your brain, and don't let
-              these tricky questions fool you!
-
+            <p className="mb-2 text-sm font-bold uppercase tracking-widest text-purple-400">
+              Challenge your brain
             </p>
 
-            {/* ==================================================
-                SEARCH
-            ================================================== */}
+            <h2 className="text-3xl font-black md:text-4xl">
+              {selectedCategory ===
+              "All"
+                ? "All Riddles"
+                : selectedCategory}
+            </h2>
 
-            <div className="mx-auto mt-12 max-w-3xl">
+          </div>
 
-              <div className="relative">
+          <span className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/60">
+            {filteredRiddles.length}{" "}
+            {filteredRiddles.length === 1
+              ? "riddle"
+              : "riddles"}
+          </span>
 
-                <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-2xl">
-                  🔍
-                </span>
+        </div>
 
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) =>
-                    setSearch(event.target.value)
-                  }
-                  placeholder="Search riddles..."
-                  className="w-full rounded-2xl border border-white/10 bg-[#202237] px-14 py-5 text-base font-medium text-white outline-none transition placeholder:text-white/35 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-500/10"
-                />
+        {/* SEARCH RESULT MESSAGE */}
 
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="absolute right-5 top-1/2 -translate-y-1/2 text-xl text-white/40 transition hover:text-white"
-                  >
-                    ×
-                  </button>
-                )}
+        {globalSearch && (
+          <div className="mb-8 rounded-2xl border border-purple-400/20 bg-purple-400/10 px-5 py-4">
 
-              </div>
+            <p className="text-sm text-white/60">
+              Search result for
+            </p>
 
-            </div>
+            <p className="mt-1 text-lg font-bold text-purple-300">
+              "{globalSearch}"
+            </p>
 
-            {/* ==================================================
-                CATEGORY BUTTONS
-            ================================================== */}
+          </div>
+        )}
 
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
+        {/* CARDS */}
 
-              {CATEGORIES.map((category) => {
+        <div className="grid gap-6 md:grid-cols-2">
 
-                const active =
-                  selectedCategory === category;
+          {orderedRiddles.map(
+            (riddle) => {
 
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() =>
-                      handleCategory(category)
-                    }
-                    className={`rounded-full px-7 py-3 text-sm font-bold transition-all duration-200 ${
-                      active
-                        ? "bg-yellow-400 text-black shadow-lg shadow-yellow-400/20"
-                        : "bg-[#202237] text-white hover:bg-[#2b2e49] hover:-translate-y-0.5"
-                    }`}
-                  >
-                    {category}
-                  </button>
+              const isRevealed =
+                revealed.includes(
+                  riddle.id
                 );
 
-              })}
+              const isHighlighted =
+                highlightId ===
+                riddle.id;
 
-            </div>
+              const isTamil =
+                riddle.category ===
+                "Tamil";
 
-          </div>
+              const displayedQuestion =
+                isTamil &&
+                tamilLanguage ===
+                  "Tanglish"
+                  ? riddle.tanglishQuestion ||
+                    riddle.question
+                  : riddle.question;
 
-        </section>
+              const displayedAnswer =
+                isTamil &&
+                tamilLanguage ===
+                  "Tanglish"
+                  ? riddle.tanglishAnswer ||
+                    riddle.answer
+                  : riddle.answer;
 
-        {/* ==================================================
-            RIDDLES SECTION
-        ================================================== */}
+              const alreadyLiked =
+                liked.includes(
+                  riddle.id
+                );
 
-        <section className="pt-10">
+              return (
 
-          {/* TITLE */}
-
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-
-            <div>
-
-              <p className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-purple-400">
-                CHALLENGE YOUR BRAIN
-              </p>
-
-              <h2 className="text-4xl font-black sm:text-5xl">
-
-                {search
-                  ? "Search Results"
-                  : selectedCategory === "All"
-                  ? "All Riddles"
-                  : `${selectedCategory} Riddles`}
-
-              </h2>
-
-            </div>
-
-            <div className="self-start rounded-full bg-[#202237] px-5 py-3 text-sm font-semibold text-white/60 sm:self-auto">
-
-              {filteredRiddles.length}{" "}
-
-              {filteredRiddles.length === 1
-                ? "riddle"
-                : "riddles"}
-
-            </div>
-
-          </div>
-
-          {/* ==================================================
-              ERROR
-          ================================================== */}
-
-          {error && (
-            <div className="mb-10 rounded-3xl border border-red-500/30 bg-red-500/10 p-8 text-center">
-
-              <div className="mb-3 text-4xl">
-                ⚠️
-              </div>
-
-              <h3 className="text-xl font-bold text-red-300">
-                Unable to load riddles
-              </h3>
-
-              <p className="mt-3 text-sm text-white/60">
-                {error}
-              </p>
-
-              <button
-                type="button"
-                onClick={loadRiddles}
-                className="mt-6 rounded-xl bg-red-500 px-6 py-3 font-bold transition hover:bg-red-400"
-              >
-                🔄 Try Again
-              </button>
-
-            </div>
-          )}
-
-          {/* ==================================================
-              NO RESULTS
-          ================================================== */}
-
-          {!error &&
-            filteredRiddles.length === 0 && (
-              <div className="rounded-3xl border border-white/10 bg-[#15172b] px-6 py-20 text-center">
-
-                <div className="mb-5 text-6xl">
-                  🔎
-                </div>
-
-                <h3 className="text-2xl font-bold">
-                  No riddles found
-                </h3>
-
-                <p className="mt-3 text-white/50">
-                  Try another search or category.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="mt-6 rounded-xl bg-purple-600 px-6 py-3 font-bold transition hover:bg-purple-500"
+                <article
+                  id={`riddle-${riddle.id}`}
+                  key={riddle.id}
+                  className={`group overflow-hidden rounded-3xl border p-0 shadow-xl transition ${
+                    isHighlighted
+                      ? "border-purple-400 bg-purple-400/[0.12] shadow-purple-400/20 ring-2 ring-purple-400/60"
+                      : "border-white/10 bg-white/[0.06] hover:-translate-y-1 hover:bg-white/[0.09]"
+                  }`}
                 >
-                  Clear Filters
-                </button>
 
-              </div>
-            )}
+                  {/* SEARCH MATCH LABEL */}
 
-          {/* ==================================================
-              RIDDLE GRID
-          ================================================== */}
+                  {isHighlighted && (
+                    <div className="bg-purple-400 px-5 py-2 text-center text-sm font-black uppercase tracking-widest text-black">
+                      🔍 Matching Result
+                    </div>
+                  )}
 
-          {!error &&
-            filteredRiddles.length > 0 && (
-              <section className="grid gap-6 lg:grid-cols-2">
+                  <div className="p-7">
 
-                {filteredRiddles.map(
-                  (riddle, index) => {
+                    {/* CATEGORY */}
 
-                    const answerVisible =
-                      openAnswers.includes(
-                        riddle.id
-                      );
+                    <div className="mb-6 flex items-center justify-between">
 
-                    const alreadyLiked =
-                      likedRiddles.includes(
-                        riddle.id
-                      );
+                      <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs font-bold text-purple-300">
+                        {riddle.category}
+                      </span>
 
-                    const isTamil =
-                      riddle.category
-                        ?.trim()
-                        .toLowerCase() ===
-                      "tamil";
+                      <span className="text-2xl">
+                        🧩
+                      </span>
 
-                    const isTanglish =
-                      language[riddle.id] ===
-                      "tanglish";
+                    </div>
 
-                    const displayedQuestion =
-                      isTamil &&
-                      isTanglish &&
-                      riddle.tanglish_question
-                        ? riddle.tanglish_question
-                        : riddle.question;
+                    {/* TAMIL / TANGLISH */}
 
-                    const displayedAnswer =
-                      isTamil &&
-                      isTanglish &&
-                      riddle.tanglish_answer
-                        ? riddle.tanglish_answer
-                        : riddle.answer;
+                    {isTamil && (
 
-                    return (
-                      <article
-                        key={riddle.id}
-                        id={`riddle-${riddle.id}`}
-                        className="group overflow-hidden rounded-3xl border border-white/10 bg-[#15172b] shadow-xl shadow-black/10 transition duration-300 hover:-translate-y-1 hover:border-purple-400/20 hover:shadow-purple-900/10"
-                      >
+                      <div className="mb-6 flex justify-center">
 
-                        {/* CARD TOP */}
-
-                        <div className="flex items-center justify-between px-6 pt-6">
-
-                          <span className="rounded-full bg-purple-600/25 px-4 py-2 text-xs font-bold text-purple-300">
-                            {riddle.category}
-                          </span>
-
-                          <span className="text-xs font-bold uppercase tracking-wider text-white/40">
-                            {riddle.difficulty}
-                          </span>
-
-                        </div>
-
-                        {/* QUESTION */}
-
-                        <div className="px-6 pb-6 pt-5">
-
-                          <div className="mb-4 text-5xl">
-                            ❓
-                          </div>
-
-                          <div className="mb-2 text-xs font-bold uppercase tracking-widest text-white/25">
-                            RIDDLE #{index + 1}
-                          </div>
-
-                          <h3 className="text-xl font-bold leading-8 text-white sm:text-2xl">
-                            {displayedQuestion}
-                          </h3>
-
-                          {/* TAMIL / TANGLISH */}
-
-                          {isTamil &&
-                            riddle.tanglish_question &&
-                            riddle.tanglish_answer && (
-                              <div className="mt-4 inline-flex overflow-hidden rounded-full border border-white/10 bg-[#202237] p-1">
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (
-                                      isTanglish
-                                    ) {
-                                      toggleLanguage(
-                                        riddle.id
-                                      );
-                                    }
-                                  }}
-                                  className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                                    !isTanglish
-                                      ? "bg-yellow-400 text-black"
-                                      : "text-white/60 hover:text-white"
-                                  }`}
-                                >
-                                  தமிழ்
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (
-                                      !isTanglish
-                                    ) {
-                                      toggleLanguage(
-                                        riddle.id
-                                      );
-                                    }
-                                  }}
-                                  className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                                    isTanglish
-                                      ? "bg-yellow-400 text-black"
-                                      : "text-white/60 hover:text-white"
-                                  }`}
-                                >
-                                  Tanglish
-                                </button>
-
-                              </div>
-                            )}
-
-                        </div>
-
-                        {/* ANSWER */}
-
-                        <div className="px-6 pb-6">
+                        <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
 
                           <button
                             type="button"
                             onClick={() =>
-                              toggleAnswer(
-                                riddle.id
+                              setTamilLanguage(
+                                "Tamil"
                               )
                             }
-                            className={`w-full rounded-2xl px-5 py-4 text-left font-bold transition ${
-                              answerVisible
-                                ? "bg-purple-600/20 text-purple-200"
-                                : "bg-blue-500 hover:bg-blue-500"
+                            className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                              tamilLanguage ===
+                              "Tamil"
+                                ? "bg-purple-400 text-black"
+                                : "text-white/60 hover:text-white"
                             }`}
                           >
-
-                            <div className="flex items-center justify-between">
-
-                              <span>
-                                {answerVisible
-                                  ? "💡 Answer"
-                                  : "👀 Show Answer"}
-                              </span>
-
-                              <span
-                                className={`transition-transform ${
-                                  answerVisible
-                                    ? "rotate-180"
-                                    : ""
-                                }`}
-                              >
-                                ↓
-                              </span>
-
-                            </div>
-
+                            தமிழ்
                           </button>
 
-                          {answerVisible && (
-                            <div className="mt-3 rounded-2xl border border-purple-400/20 bg-purple-500/10 p-5">
-
-                              <p className="text-lg font-bold text-purple-200">
-                                {displayedAnswer}
-                              </p>
-
-                              {riddle.tanglish_answer && (
-                                <p className="mt-3 border-t border-white/10 pt-3 text-sm text-white/50">
-                                  {riddle.tanglish_answer}
-                                </p>
-                              )}
-
-                            </div>
-                          )}
-
-                        </div>
-
-                        {/* ==================================================
-                            CARD ACTIONS
-                        ================================================== */}
-
-                        <div className="flex items-center justify-between border-t border-white/10 px-6 py-5">
-
-                          <div className="flex items-center gap-3">
-
-                            {/* LIKE */}
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleLike(
-                                  riddle
-                                )
-                              }
-                              disabled={
-                                alreadyLiked
-                              }
-                              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-                                alreadyLiked
-                                  ? "bg-pink-500/15 text-pink-300"
-                                  : "bg-[#202237] text-white/60 hover:bg-pink-500/10 hover:text-pink-300"
-                              }`}
-                            >
-
-                              <span className="text-lg">
-                                {alreadyLiked
-                                  ? "❤️"
-                                  : "🤍"}
-                              </span>
-
-                              <span>
-                                {riddle.likes ||
-                                  0}
-                              </span>
-
-                            </button>
-
-                            {/* SHARE */}
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleShare(
-                                  riddle
-                                )
-                              }
-                              disabled={
-                                sharingId ===
-                                riddle.id
-                              }
-                              className="flex items-center gap-2 rounded-xl bg-[#202237] px-4 py-2.5 text-sm font-bold text-white/60 transition hover:bg-blue-500/10 hover:text-blue-300"
-                            >
-
-                              <span className="text-lg">
-                                🔗
-                              </span>
-
-                              <span>
-                                {sharingId ===
-                                riddle.id
-                                  ? "Sharing..."
-                                  : riddle.shares ||
-                                    0}
-                              </span>
-
-                            </button>
-
-                          </div>
-
-                          {/* NUMBER */}
-
-                          <span className="text-xs font-bold text-white/20">
-                            #{riddle.id}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTamilLanguage(
+                                "Tanglish"
+                              )
+                            }
+                            className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                              tamilLanguage ===
+                              "Tanglish"
+                                ? "bg-purple-400 text-black"
+                                : "text-white/60 hover:text-white"
+                            }`}
+                          >
+                            Tanglish
+                          </button>
 
                         </div>
 
-                      </article>
-                    );
-                  }
-                )}
+                      </div>
+                    )}
 
-              </section>
-            )}
+                    {/* QUESTION ICON */}
 
-          {/* ==================================================
-              BOTTOM CTA
-          ================================================== */}
+                    <div className="mb-6 text-4xl">
+                      🤔
+                    </div>
 
-          <section className="mt-20 overflow-hidden rounded-[2rem] border border-purple-400/20 bg-gradient-to-r from-purple-900/60 to-[#191a2c] px-6 py-14 text-center">
+                    {/* QUESTION */}
 
-            <div className="mb-5 text-5xl">
-              🧠
+                    <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
+                      {displayedQuestion}
+                    </h3>
+
+                    {/* ANSWER */}
+
+                    {isRevealed && (
+
+                      <div className="mt-6 rounded-2xl border border-purple-400/20 bg-purple-400/10 p-5">
+
+                        <p className="text-xs font-bold uppercase tracking-widest text-purple-400">
+                          💡 Answer
+                        </p>
+
+                        <p className="mt-2 text-xl font-black">
+                          {displayedAnswer}
+                        </p>
+
+                      </div>
+                    )}
+
+                    {/* REVEAL */}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleAnswer(
+                          riddle.id
+                        )
+                      }
+                      className="mt-7 w-full rounded-2xl bg-gradient-to-r from-purple-500 to-pink-400 px-5 py-4 font-bold text-white transition hover:scale-[1.02]"
+                    >
+                      {isRevealed
+                        ? "🙈 Hide Answer"
+                        : "💡 Reveal Answer"}
+                    </button>
+
+                  </div>
+
+                  {/* CARD ACTIONS */}
+
+                  <div className="border-t border-white/10 px-6 py-5">
+
+                    <div className="grid grid-cols-2 gap-3">
+
+                      {/* LIKE */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleLike(
+                            riddle
+                          )
+                        }
+                        disabled={
+                          alreadyLiked
+                        }
+                        className={`rounded-2xl border px-5 py-4 font-bold transition ${
+                          alreadyLiked
+                            ? "border-pink-400/30 bg-pink-500/20 text-pink-300"
+                            : "border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {alreadyLiked
+                          ? "❤️ Liked"
+                          : "🤍 Like"}{" "}
+
+                        <span className="ml-1 text-white/50">
+                          {riddle.likes ||
+                            0}
+                        </span>
+                      </button>
+
+                      {/* SHARE */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleShare(
+                            riddle
+                          )
+                        }
+                        disabled={
+                          sharingId ===
+                          riddle.id
+                        }
+                        className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 font-bold text-white transition hover:bg-white/10"
+                      >
+                        {sharingId ===
+                        riddle.id
+                          ? "⏳ Sharing..."
+                          : "🔗 Share"}{" "}
+
+                        <span className="ml-1 text-white/50">
+                          {riddle.shares ||
+                            0}
+                        </span>
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                </article>
+              );
+            }
+          )}
+
+        </div>
+
+        {/* NO RESULTS */}
+
+        {filteredRiddles.length ===
+          0 && (
+
+          <div className="py-20 text-center">
+
+            <div className="text-6xl">
+              🤔
             </div>
 
-            <h2 className="text-3xl font-black sm:text-4xl">
-              Think you can solve them all?
-            </h2>
+            <h3 className="mt-5 text-2xl font-black">
+              No riddles found
+            </h3>
 
-            <p className="mx-auto mt-4 max-w-xl text-white/55">
-              More riddles, funny questions and brain teasers
-              are coming!
+            <p className="mt-2 text-white/50">
+              Try another search or
+              category.
             </p>
 
-          </section>
+          </div>
+        )}
 
-        </section>
+      </section>
 
-      </div>
+      {/* CTA */}
+
+      <section className="mx-auto max-w-5xl px-5 pb-20">
+
+        <div className="rounded-3xl border border-purple-400/20 bg-gradient-to-r from-purple-700/30 to-pink-500/10 p-8 text-center">
+
+          <div className="text-4xl">
+            🧠
+          </div>
+
+          <h2 className="mt-4 text-3xl font-black">
+            Think you can solve them all?
+          </h2>
+
+          <p className="mt-3 text-white/60">
+            Keep challenging your brain!
+          </p>
+
+        </div>
+
+      </section>
+
+      {/* FOOTER */}
+
+      <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-white/40">
+        © 2026 Kadi Riddler. Think.
+        Laugh. Get Tricked. 💜
+      </footer>
 
     </main>
   );

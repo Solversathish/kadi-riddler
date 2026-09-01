@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "../supabase/client";
 
 type Joke = {
@@ -27,19 +28,40 @@ const categories = [
 ];
 
 export default function KadiJokesPage() {
-  const [jokes, setJokes] = useState<Joke[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const searchParams = useSearchParams();
 
-  const [revealed, setRevealed] = useState<number[]>([]);
+  // ============================================
+  // GLOBAL SEARCH
+  // ============================================
+
+  const globalSearch =
+    searchParams.get("search") || "";
+
+  const highlightId =
+    Number(searchParams.get("highlight")) || null;
+
+  const [jokes, setJokes] = useState<Joke[]>([]);
+  const [selectedCategory, setSelectedCategory] =
+    useState("All");
+
+  const [revealed, setRevealed] =
+    useState<number[]>([]);
 
   // ONLY TWO LANGUAGES
-  const [language, setLanguage] = useState<"Tamil" | "Tanglish">("Tamil");
+  const [language, setLanguage] =
+    useState<"Tamil" | "Tanglish">("Tamil");
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] =
+    useState(true);
 
-  const [likedJokes, setLikedJokes] = useState<number[]>([]);
-  const [sharingJokes, setSharingJokes] = useState<number[]>([]);
+  const [error, setError] =
+    useState("");
+
+  const [likedJokes, setLikedJokes] =
+    useState<number[]>([]);
+
+  const [sharingJokes, setSharingJokes] =
+    useState<number[]>([]);
 
   // ============================================
   // LOAD JOKES
@@ -52,12 +74,21 @@ export default function KadiJokesPage() {
     const { data, error } = await supabase
       .from("kadi_jokes")
       .select("*")
-      .order("id", { ascending: true });
+      .order("id", {
+        ascending: true,
+      });
 
     if (error) {
-      console.error("Error loading kadi jokes:", error);
+      console.error(
+        "Error loading kadi jokes:",
+        error
+      );
 
-      setError(error.message || "Unable to load jokes.");
+      setError(
+        error.message ||
+          "Unable to load jokes."
+      );
+
       setLoading(false);
 
       return;
@@ -79,17 +110,88 @@ export default function KadiJokesPage() {
     selectedCategory === "All"
       ? jokes
       : jokes.filter(
-          (joke) => joke.category === selectedCategory
+          (joke) =>
+            joke.category ===
+            selectedCategory
         );
+
+  // ============================================
+  // GLOBAL SEARCH
+  //
+  // Move the exact highlighted joke
+  // to the top of the list.
+  // ============================================
+
+  const orderedJokes = useMemo(() => {
+    if (!highlightId) {
+      return filteredJokes;
+    }
+
+    const highlighted =
+      filteredJokes.find(
+        (joke) =>
+          joke.id === highlightId
+      );
+
+    if (!highlighted) {
+      return filteredJokes;
+    }
+
+    return [
+      highlighted,
+      ...filteredJokes.filter(
+        (joke) =>
+          joke.id !== highlightId
+      ),
+    ];
+  }, [
+    filteredJokes,
+    highlightId,
+  ]);
+
+  // ============================================
+  // SCROLL TO MATCHING RESULT
+  // ============================================
+
+  useEffect(() => {
+    if (!highlightId) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const element =
+        document.getElementById(
+          `kadi-joke-${highlightId}`
+        );
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    highlightId,
+    orderedJokes,
+  ]);
 
   // ============================================
   // REVEAL / HIDE ANSWER
   // ============================================
 
-  const toggleAnswer = (id: number) => {
+  const toggleAnswer = (
+    id: number
+  ) => {
     setRevealed((current) =>
       current.includes(id)
-        ? current.filter((item) => item !== id)
+        ? current.filter(
+            (item) => item !== id
+          )
         : [...current, id]
     );
   };
@@ -104,9 +206,14 @@ export default function KadiJokesPage() {
   // NO FALLBACK TO ENGLISH
   // ============================================
 
-  const getQuestion = (joke: Joke) => {
+  const getQuestion = (
+    joke: Joke
+  ) => {
     if (language === "Tamil") {
-      return joke.question || "தமிழ் கேள்வி கிடைக்கவில்லை";
+      return (
+        joke.question ||
+        "தமிழ் கேள்வி கிடைக்கவில்லை"
+      );
     }
 
     return (
@@ -125,9 +232,14 @@ export default function KadiJokesPage() {
   // NO FALLBACK TO ENGLISH
   // ============================================
 
-  const getAnswer = (joke: Joke) => {
+  const getAnswer = (
+    joke: Joke
+  ) => {
     if (language === "Tamil") {
-      return joke.answer || "தமிழ் பதில் கிடைக்கவில்லை";
+      return (
+        joke.answer ||
+        "தமிழ் பதில் கிடைக்கவில்லை"
+      );
     }
 
     return (
@@ -140,19 +252,26 @@ export default function KadiJokesPage() {
   // LIKE
   // ============================================
 
-  const handleLike = async (id: number) => {
+  const handleLike = async (
+    id: number
+  ) => {
     if (likedJokes.includes(id)) {
       return;
     }
 
-    const joke = jokes.find((item) => item.id === id);
+    const joke = jokes.find(
+      (item) => item.id === id
+    );
 
     if (!joke) {
       return;
     }
 
-    const currentLikes = joke.likes || 0;
-    const newLikes = currentLikes + 1;
+    const currentLikes =
+      joke.likes || 0;
+
+    const newLikes =
+      currentLikes + 1;
 
     // Update UI immediately
     setJokes((current) =>
@@ -166,18 +285,25 @@ export default function KadiJokesPage() {
       )
     );
 
-    setLikedJokes((current) => [...current, id]);
+    setLikedJokes((current) => [
+      ...current,
+      id,
+    ]);
 
     // Update Supabase
-    const { error } = await supabase
-      .from("kadi_jokes")
-      .update({
-        likes: newLikes,
-      })
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("kadi_jokes")
+        .update({
+          likes: newLikes,
+        })
+        .eq("id", id);
 
     if (error) {
-      console.error("Error updating likes:", error);
+      console.error(
+        "Error updating likes:",
+        error
+      );
 
       // Revert UI
       setJokes((current) =>
@@ -192,7 +318,9 @@ export default function KadiJokesPage() {
       );
 
       setLikedJokes((current) =>
-        current.filter((item) => item !== id)
+        current.filter(
+          (item) => item !== id
+        )
       );
     }
   };
@@ -201,8 +329,14 @@ export default function KadiJokesPage() {
   // SHARE
   // ============================================
 
-  const handleShare = async (joke: Joke) => {
-    if (sharingJokes.includes(joke.id)) {
+  const handleShare = async (
+    joke: Joke
+  ) => {
+    if (
+      sharingJokes.includes(
+        joke.id
+      )
+    ) {
       return;
     }
 
@@ -211,10 +345,14 @@ export default function KadiJokesPage() {
       joke.id,
     ]);
 
-    const question = getQuestion(joke);
-    const answer = getAnswer(joke);
+    const question =
+      getQuestion(joke);
 
-    const shareText = `${question}\n\n😂 ${answer}`;
+    const answer =
+      getAnswer(joke);
+
+    const shareText =
+      `${question}\n\n😂 ${answer}`;
 
     try {
       // Mobile / supported browsers
@@ -230,12 +368,17 @@ export default function KadiJokesPage() {
           shareText
         );
 
-        alert("Joke copied to clipboard! 😂");
+        alert(
+          "Joke copied to clipboard! 😂"
+        );
       }
 
       // Update share count
-      const currentShares = joke.shares || 0;
-      const newShares = currentShares + 1;
+      const currentShares =
+        joke.shares || 0;
+
+      const newShares =
+        currentShares + 1;
 
       setJokes((current) =>
         current.map((item) =>
@@ -248,12 +391,16 @@ export default function KadiJokesPage() {
         )
       );
 
-      const { error } = await supabase
-        .from("kadi_jokes")
-        .update({
-          shares: newShares,
-        })
-        .eq("id", joke.id);
+      const { error } =
+        await supabase
+          .from("kadi_jokes")
+          .update({
+            shares: newShares,
+          })
+          .eq(
+            "id",
+            joke.id
+          );
 
       if (error) {
         console.error(
@@ -262,12 +409,17 @@ export default function KadiJokesPage() {
         );
       }
     } catch (error) {
-      console.log("Share cancelled:", error);
+      console.log(
+        "Share cancelled:",
+        error
+      );
     } finally {
-      setSharingJokes((current) =>
-        current.filter(
-          (item) => item !== joke.id
-        )
+      setSharingJokes(
+        (current) =>
+          current.filter(
+            (item) =>
+              item !== joke.id
+          )
       );
     }
   };
@@ -301,8 +453,9 @@ export default function KadiJokesPage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">
-            Warning: These jokes may be terrible.
-            That's exactly why they're funny! 😆
+            Warning: These jokes may be
+            terrible. That's exactly why
+            they're funny! 😆
           </p>
 
         </div>
@@ -316,24 +469,29 @@ export default function KadiJokesPage() {
 
         <div className="flex flex-wrap justify-center gap-3">
 
-          {categories.map((category) => (
+          {categories.map(
+            (category) => (
 
-            <button
-              key={category}
-              type="button"
-              onClick={() =>
-                setSelectedCategory(category)
-              }
-              className={`rounded-full px-5 py-3 text-sm font-bold transition ${
-                selectedCategory === category
-                  ? "bg-orange-400 text-black shadow-lg shadow-orange-400/20"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              {category}
-            </button>
+              <button
+                key={category}
+                type="button"
+                onClick={() =>
+                  setSelectedCategory(
+                    category
+                  )
+                }
+                className={`rounded-full px-5 py-3 text-sm font-bold transition ${
+                  selectedCategory ===
+                  category
+                    ? "bg-orange-400 text-black shadow-lg shadow-orange-400/20"
+                    : "bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                {category}
+              </button>
 
-          ))}
+            )
+          )}
 
         </div>
 
@@ -356,7 +514,8 @@ export default function KadiJokesPage() {
             </p>
 
             <h2 className="text-3xl font-black md:text-4xl">
-              {selectedCategory === "All"
+              {selectedCategory ===
+              "All"
                 ? "All Kadi Jokes"
                 : selectedCategory}
             </h2>
@@ -364,10 +523,30 @@ export default function KadiJokesPage() {
           </div>
 
           <span className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/60">
-            {filteredJokes.length} jokes
+            {orderedJokes.length} jokes
           </span>
 
         </div>
+
+        {/* ==========================================
+            GLOBAL SEARCH RESULT
+        ========================================== */}
+
+        {globalSearch && (
+
+          <div className="mb-8 rounded-2xl border border-orange-400/20 bg-orange-400/10 px-5 py-4">
+
+            <p className="text-sm text-white/60">
+              Search result for
+            </p>
+
+            <p className="mt-1 text-lg font-bold text-orange-300">
+              "{globalSearch}"
+            </p>
+
+          </div>
+
+        )}
 
         {/* ==========================================
             LOADING
@@ -431,7 +610,8 @@ export default function KadiJokesPage() {
 
         {!loading &&
           !error &&
-          filteredJokes.length === 0 && (
+          orderedJokes.length ===
+            0 && (
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-16 text-center">
 
@@ -457,221 +637,264 @@ export default function KadiJokesPage() {
 
         {!loading &&
           !error &&
-          filteredJokes.length > 0 && (
+          orderedJokes.length >
+            0 && (
 
             <div className="grid gap-6 md:grid-cols-2">
 
-              {filteredJokes.map((joke) => {
+              {orderedJokes.map(
+                (joke) => {
 
-                const isRevealed =
-                  revealed.includes(joke.id);
+                  const isRevealed =
+                    revealed.includes(
+                      joke.id
+                    );
 
-                const isTamil =
-                  joke.category === "Tamil Kadi";
+                  const isTamil =
+                    joke.category ===
+                    "Tamil Kadi";
 
-                return (
+                  const isHighlighted =
+                    highlightId ===
+                    joke.id;
 
-                  <article
-                    key={joke.id}
-                    className="group rounded-3xl border border-white/10 bg-white/[0.06] p-7 shadow-xl transition hover:-translate-y-1 hover:bg-white/[0.09]"
-                  >
+                  return (
 
-                    {/* ==================================
-                        CATEGORY
-                    ================================== */}
+                    <article
+                      id={`kadi-joke-${joke.id}`}
+                      key={joke.id}
+                      className={`group rounded-3xl border p-7 shadow-xl transition hover:-translate-y-1 ${
+                        isHighlighted
+                          ? "border-orange-400 bg-orange-400/[0.12] shadow-orange-400/20 ring-2 ring-orange-400/60"
+                          : "border-white/10 bg-white/[0.06] hover:bg-white/[0.09]"
+                      }`}
+                    >
 
-                    <div className="mb-6 flex items-center justify-between">
+                      {/* ==================================
+                          MATCHING RESULT LABEL
+                      ================================== */}
 
-                      <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-bold text-orange-300">
-                        {joke.category}
-                      </span>
+                      {isHighlighted && (
 
-                      <span className="text-2xl">
-                        😂
-                      </span>
+                        <div className="-mx-7 -mt-7 mb-6 rounded-t-3xl bg-orange-400 px-5 py-2 text-center text-sm font-black uppercase tracking-widest text-black">
+                          🔍 Matching Result
+                        </div>
 
-                    </div>
+                      )}
 
-                    {/* ==================================
-                        LANGUAGE TOGGLE
+                      {/* ==================================
+                          CATEGORY
+                      ================================== */}
 
-                        ONLY:
-                        தமிழ்
-                        Tanglish
-                    ================================== */}
+                      <div className="mb-6 flex items-center justify-between">
 
-                    {isTamil && (
+                        <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-bold text-orange-300">
+                          {joke.category}
+                        </span>
 
-                      <div className="mb-6 flex justify-center">
+                        <span className="text-2xl">
+                          😂
+                        </span>
 
-                        <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
+                      </div>
 
-                          {/* TAMIL */}
+                      {/* ==================================
+                          LANGUAGE TOGGLE
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setLanguage("Tamil")
-                            }
-                            className={`rounded-full px-7 py-2 text-sm font-bold transition ${
-                              language === "Tamil"
-                                ? "bg-orange-400 text-black"
-                                : "text-white/60 hover:text-white"
-                            }`}
-                          >
-                            தமிழ்
-                          </button>
+                          ONLY:
+                          தமிழ்
+                          Tanglish
+                      ================================== */}
 
-                          {/* TANGLISH */}
+                      {isTamil && (
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setLanguage("Tanglish")
-                            }
-                            className={`rounded-full px-7 py-2 text-sm font-bold transition ${
-                              language === "Tanglish"
-                                ? "bg-orange-400 text-black"
-                                : "text-white/60 hover:text-white"
-                            }`}
-                          >
-                            Tanglish
-                          </button>
+                        <div className="mb-6 flex justify-center">
+
+                          <div className="flex rounded-full border border-white/10 bg-white/[0.06] p-1">
+
+                            {/* TAMIL */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLanguage(
+                                  "Tamil"
+                                )
+                              }
+                              className={`rounded-full px-7 py-2 text-sm font-bold transition ${
+                                language ===
+                                "Tamil"
+                                  ? "bg-orange-400 text-black"
+                                  : "text-white/60 hover:text-white"
+                              }`}
+                            >
+                              தமிழ்
+                            </button>
+
+                            {/* TANGLISH */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLanguage(
+                                  "Tanglish"
+                                )
+                              }
+                              className={`rounded-full px-7 py-2 text-sm font-bold transition ${
+                                language ===
+                                "Tanglish"
+                                  ? "bg-orange-400 text-black"
+                                  : "text-white/60 hover:text-white"
+                              }`}
+                            >
+                              Tanglish
+                            </button>
+
+                          </div>
 
                         </div>
 
+                      )}
+
+                      {/* ==================================
+                          QUESTION ICON
+                      ================================== */}
+
+                      <div className="mb-6 text-4xl">
+                        🤔
                       </div>
 
-                    )}
+                      {/* ==================================
+                          QUESTION
+                      ================================== */}
 
-                    {/* ==================================
-                        QUESTION ICON
-                    ================================== */}
+                      <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
 
-                    <div className="mb-6 text-4xl">
-                      🤔
-                    </div>
+                        {isTamil
+                          ? getQuestion(
+                              joke
+                            )
+                          : joke.english_question ||
+                            "Question not available"}
 
-                    {/* ==================================
-                        QUESTION
-                    ================================== */}
+                      </h3>
 
-                    <h3 className="min-h-[100px] text-2xl font-bold leading-relaxed">
+                      {/* ==================================
+                          PUNCHLINE
+                      ================================== */}
 
-                      {isTamil
-                        ? getQuestion(joke)
-                        : joke.english_question ||
-                          "Question not available"}
+                      {isRevealed && (
 
-                    </h3>
+                        <div className="mt-6 rounded-2xl border border-orange-400/20 bg-orange-400/10 p-5">
 
-                    {/* ==================================
-                        PUNCHLINE
-                    ================================== */}
+                          <p className="text-xs font-bold uppercase tracking-widest text-orange-400">
+                            😂 Punchline
+                          </p>
 
-                    {isRevealed && (
+                          <p className="mt-2 text-xl font-black">
 
-                      <div className="mt-6 rounded-2xl border border-orange-400/20 bg-orange-400/10 p-5">
+                            {isTamil
+                              ? getAnswer(
+                                  joke
+                                )
+                              : joke.english_answer ||
+                                "Answer not available"}
 
-                        <p className="text-xs font-bold uppercase tracking-widest text-orange-400">
-                          😂 Punchline
-                        </p>
+                          </p>
 
-                        <p className="mt-2 text-xl font-black">
-                          {isTamil
-                            ? getAnswer(joke)
-                            : joke.english_answer ||
-                              "Answer not available"}
-                        </p>
+                        </div>
 
-                      </div>
+                      )}
 
-                    )}
-
-                    {/* ==================================
-                        REVEAL BUTTON
-                    ================================== */}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleAnswer(joke.id)
-                      }
-                      className="mt-7 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-400 px-5 py-4 font-bold text-black transition hover:scale-[1.02]"
-                    >
-                      {isRevealed
-                        ? "🙈 Hide Punchline"
-                        : "😂 Reveal Punchline"}
-                    </button>
-
-                    {/* ==================================
-                        LIKE + SHARE
-                    ================================== */}
-
-                    <div className="mt-5 flex gap-3">
-
-                      {/* LIKE */}
+                      {/* ==================================
+                          REVEAL BUTTON
+                      ================================== */}
 
                       <button
                         type="button"
                         onClick={() =>
-                          handleLike(joke.id)
-                        }
-                        disabled={likedJokes.includes(
-                          joke.id
-                        )}
-                        className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-4 py-3 font-bold transition ${
-                          likedJokes.includes(
+                          toggleAnswer(
                             joke.id
                           )
-                            ? "border-pink-400/30 bg-pink-400/20 text-pink-300"
-                            : "border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
-                        }`}
-                      >
-
-                        {likedJokes.includes(
-                          joke.id
-                        )
-                          ? "❤️ Liked"
-                          : "🤍 Like"}
-
-                        <span className="text-white/60">
-                          {joke.likes || 0}
-                        </span>
-
-                      </button>
-
-                      {/* SHARE */}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleShare(joke)
                         }
-                        disabled={sharingJokes.includes(
-                          joke.id
-                        )}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 font-bold transition hover:bg-white/10"
+                        className="mt-7 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-400 px-5 py-4 font-bold text-black transition hover:scale-[1.02]"
                       >
-
-                        {sharingJokes.includes(
-                          joke.id
-                        )
-                          ? "Sharing..."
-                          : "🔗 Share"}
-
-                        <span className="text-white/60">
-                          {joke.shares || 0}
-                        </span>
-
+                        {isRevealed
+                          ? "🙈 Hide Punchline"
+                          : "😂 Reveal Punchline"}
                       </button>
 
-                    </div>
+                      {/* ==================================
+                          LIKE + SHARE
+                      ================================== */}
 
-                  </article>
+                      <div className="mt-5 grid grid-cols-2 gap-3">
 
-                );
-              })}
+                        {/* LIKE */}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleLike(
+                              joke.id
+                            )
+                          }
+                          disabled={likedJokes.includes(
+                            joke.id
+                          )}
+                          className={`rounded-2xl border px-5 py-4 font-bold transition ${
+                            likedJokes.includes(
+                              joke.id
+                            )
+                              ? "border-pink-400/30 bg-pink-500/20 text-pink-300"
+                              : "border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {likedJokes.includes(
+                            joke.id
+                          )
+                            ? "❤️ Liked"
+                            : "🤍 Like"}{" "}
+
+                          <span className="ml-1 text-white/50">
+                            {joke.likes ||
+                              0}
+                          </span>
+                        </button>
+
+                        {/* SHARE */}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleShare(
+                              joke
+                            )
+                          }
+                          disabled={sharingJokes.includes(
+                            joke.id
+                          )}
+                          className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 font-bold text-white transition hover:bg-white/10"
+                        >
+                          {sharingJokes.includes(
+                            joke.id
+                          )
+                            ? "⏳ Sharing..."
+                            : "🔗 Share"}{" "}
+
+                          <span className="ml-1 text-white/50">
+                            {joke.shares ||
+                              0}
+                          </span>
+                        </button>
+
+                      </div>
+
+                    </article>
+
+                  );
+                }
+              )}
 
             </div>
 
@@ -692,7 +915,8 @@ export default function KadiJokesPage() {
           </div>
 
           <h2 className="mt-4 text-3xl font-black">
-            Warning: Side effects may include laughing!
+            Warning: Side effects may
+            include laughing!
           </h2>
 
           <p className="mt-3 text-white/60">
@@ -709,7 +933,8 @@ export default function KadiJokesPage() {
       ========================================== */}
 
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-white/40">
-        © 2026 Kadi Riddler. Think. Laugh. Get Tricked. 💜
+        © 2026 Kadi Riddler. Think. Laugh.
+        Get Tricked. 💜
       </footer>
 
     </main>
