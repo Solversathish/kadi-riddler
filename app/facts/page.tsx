@@ -1,114 +1,113 @@
 "use client";
 
-import { useState } from "react";
-import SearchBar from "../components/SearchBar";
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 
-const facts = [
-  {
-    id: 1,
-    category: "Animals",
-    emoji: "🐙",
-    fact: "Octopuses have three hearts.",
-    detail:
-      "Two hearts pump blood to the gills, while the third pumps blood to the rest of the body.",
-  },
-  {
-    id: 2,
-    category: "Space",
-    emoji: "🌌",
-    fact: "A day on Venus is longer than a year on Venus.",
-    detail:
-      "Venus rotates so slowly that one rotation takes longer than the time it takes Venus to orbit the Sun.",
-  },
-  {
-    id: 3,
-    category: "Human Body",
-    emoji: "🧠",
-    fact: "The human brain uses a surprisingly large amount of energy.",
-    detail:
-      "Even though the brain is only a small part of body mass, it requires a significant share of the body's energy.",
-  },
-  {
-    id: 4,
-    category: "Animals",
-    emoji: "🦈",
-    fact: "Sharks are older than trees.",
-    detail:
-      "Shark ancestors appeared hundreds of millions of years ago, before the first trees evolved.",
-  },
-  {
-    id: 5,
-    category: "Science",
-    emoji: "⚡",
-    fact: "Lightning can heat the air to temperatures hotter than the surface of the Sun.",
-    detail:
-      "The intense electrical discharge rapidly heats the surrounding air, producing the explosive sound we know as thunder.",
-  },
-  {
-    id: 6,
-    category: "Ocean",
-    emoji: "🌊",
-    fact: "Most of Earth's volcanic activity happens underwater.",
-    detail:
-      "A huge amount of volcanic activity occurs along underwater mountain ranges and other areas of the ocean floor.",
-  },
-  {
-    id: 7,
-    category: "Technology",
-    emoji: "💻",
-    fact: "The first computer mouse was made from wood.",
-    detail:
-      "An early computer mouse prototype was built with a wooden casing and wheels for tracking movement.",
-  },
-  {
-    id: 8,
-    category: "History",
-    emoji: "🏛️",
-    fact: "The Great Pyramid of Giza was the tallest human-made structure for thousands of years.",
-    detail:
-      "Its original height was roughly 146 meters, and it remained taller than any other known human-made structure for a very long period.",
-  },
-  {
-    id: 9,
-    category: "Weird & Crazy",
-    emoji: "🤯",
-    fact: "Bananas are botanically berries, but strawberries are not.",
-    detail:
-      "Botanical definitions of berries are based on how fruits develop, which produces some surprising classifications.",
-  },
-  {
-    id: 10,
-    category: "Science",
-    emoji: "🧪",
-    fact: "Water can exist naturally in three states on Earth.",
-    detail:
-      "Water can be found as a solid, liquid, and gas in the natural environment, such as ice, liquid water, and water vapor.",
-  },
-];
+type Fact = {
+  id: number;
+  category: string;
+  emoji: string | null;
+  fact: string;
+  detail: string;
+  likes: number;
+  shares: number;
+};
 
-const categories = [
-  "All",
-  "Animals",
-  "Space",
-  "Science",
-  "Human Body",
-  "History",
-  "Technology",
-  "Ocean",
-  "Weird & Crazy",
-];
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function FactsPage() {
+  const [facts, setFacts] = useState<Fact[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [expanded, setExpanded] = useState<number[]>([]);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [likedFacts, setLikedFacts] = useState<number[]>([]);
+  const [sharingId, setSharingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // ============================================
+  // LOAD LIKED FACTS FROM LOCAL STORAGE
+  // ============================================
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("kadi-liked-facts");
+
+      if (saved) {
+        setLikedFacts(JSON.parse(saved));
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // ============================================
+  // FETCH FACTS
+  // ============================================
+
+  useEffect(() => {
+    fetchFacts();
+  }, []);
+
+  const fetchFacts = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error } = await supabase
+        .from("facts")
+        .select("id, category, emoji, fact, detail, likes, shares")
+        .order("id", { ascending: true });
+
+      if (error) {
+        console.error("FACTS LOAD ERROR:", error);
+        setError(error.message || "Unable to load facts.");
+        setLoading(false);
+        return;
+      }
+
+      setFacts(
+        (data || []).map((item) => ({
+          id: Number(item.id),
+          category: item.category || "",
+          emoji: item.emoji || null,
+          fact: item.fact || "",
+          detail: item.detail || "",
+          likes: Number(item.likes || 0),
+          shares: Number(item.shares || 0),
+        }))
+      );
+    } catch (err) {
+      console.error("FACTS FETCH ERROR:", err);
+      setError("Unable to load facts. Please try again.");
+    }
+
+    setLoading(false);
+  };
+
+  // ============================================
+  // CATEGORIES
+  // ============================================
+
+  const categories = [
+    "All",
+    ...Array.from(new Set(facts.map((fact) => fact.category))),
+  ];
+
+  // ============================================
+  // FILTER
+  // ============================================
 
   const filteredFacts =
     selectedCategory === "All"
       ? facts
-      : facts.filter(
-          (fact) => fact.category === selectedCategory
-        );
+      : facts.filter((fact) => fact.category === selectedCategory);
+
+  // ============================================
+  // EXPAND / COLLAPSE
+  // ============================================
 
   const toggleFact = (id: number) => {
     setExpanded((current) =>
@@ -118,15 +117,288 @@ export default function FactsPage() {
     );
   };
 
+  // ============================================
+  // LIKE
+  // ============================================
+
+  const handleLike = async (fact: Fact) => {
+    // Prevent this browser from liking the same fact twice
+    if (likedFacts.includes(fact.id)) {
+      return;
+    }
+
+    const oldLikes = fact.likes || 0;
+    const newLikes = oldLikes + 1;
+
+    // Update screen immediately
+    setFacts((current) =>
+      current.map((item) =>
+        item.id === fact.id
+          ? {
+              ...item,
+              likes: newLikes,
+            }
+          : item
+      )
+    );
+
+    const updatedLikedFacts = [...likedFacts, fact.id];
+
+    setLikedFacts(updatedLikedFacts);
+
+    // Save liked state locally
+    try {
+      localStorage.setItem(
+        "kadi-liked-facts",
+        JSON.stringify(updatedLikedFacts)
+      );
+    } catch {
+      // Ignore localStorage errors
+    }
+
+    // Update Supabase
+    try {
+      const { error } = await supabase
+        .from("facts")
+        .update({
+          likes: newLikes,
+        })
+        .eq("id", fact.id);
+
+      if (error) {
+        console.error("LIKE ERROR:", error);
+
+        // Roll back screen
+        setFacts((current) =>
+          current.map((item) =>
+            item.id === fact.id
+              ? {
+                  ...item,
+                  likes: oldLikes,
+                }
+              : item
+          )
+        );
+
+        // Roll back local storage
+        setLikedFacts(likedFacts);
+
+        try {
+          localStorage.setItem(
+            "kadi-liked-facts",
+            JSON.stringify(likedFacts)
+          );
+        } catch {
+          // Ignore
+        }
+
+        return;
+      }
+
+      // Reload from Supabase so the displayed number
+      // is always the real database number
+      await fetchFacts();
+    } catch (err) {
+      console.error("LIKE EXCEPTION:", err);
+
+      // Roll back
+      setFacts((current) =>
+        current.map((item) =>
+          item.id === fact.id
+            ? {
+                ...item,
+                likes: oldLikes,
+              }
+            : item
+        )
+      );
+
+      setLikedFacts(likedFacts);
+
+      try {
+        localStorage.setItem(
+          "kadi-liked-facts",
+          JSON.stringify(likedFacts)
+        );
+      } catch {
+        // Ignore
+      }
+    }
+  };
+
+  // ============================================
+  // SHARE
+  // ============================================
+
+  const handleShare = async (fact: Fact) => {
+    setSharingId(fact.id);
+
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/facts#fact-${fact.id}`
+        : "";
+
+    const shareText = `${fact.fact}\n\nDid you know this? 🤯`;
+
+    try {
+      let shareCompleted = false;
+
+      // Native browser share
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.share
+      ) {
+        await navigator.share({
+          title: "Kadi Riddler - Amazing Facts",
+          text: shareText,
+          url: shareUrl,
+        });
+
+        shareCompleted = true;
+      } else {
+        // Desktop fallback
+        if (
+          typeof navigator !== "undefined" &&
+          navigator.clipboard
+        ) {
+          await navigator.clipboard.writeText(
+            `${shareText}\n\n${shareUrl}`
+          );
+
+          alert("Fact link copied!");
+          shareCompleted = true;
+        }
+      }
+
+      // Only increase share count if sharing actually happened
+      if (!shareCompleted) {
+        setSharingId(null);
+        return;
+      }
+
+      const oldShares = fact.shares || 0;
+      const newShares = oldShares + 1;
+
+      // Update screen immediately
+      setFacts((current) =>
+        current.map((item) =>
+          item.id === fact.id
+            ? {
+                ...item,
+                shares: newShares,
+              }
+            : item
+        )
+      );
+
+      // Update Supabase
+      const { error } = await supabase
+        .from("facts")
+        .update({
+          shares: newShares,
+        })
+        .eq("id", fact.id);
+
+      if (error) {
+        console.error("SHARE ERROR:", error);
+
+        // Roll back screen
+        setFacts((current) =>
+          current.map((item) =>
+            item.id === fact.id
+              ? {
+                  ...item,
+                  shares: oldShares,
+                }
+              : item
+          )
+        );
+
+        return;
+      }
+
+      // Reload real database values
+      await fetchFacts();
+    } catch (err) {
+      // User cancelled native sharing
+      console.log("Share cancelled:", err);
+    } finally {
+      setSharingId(null);
+    }
+  };
+
+  // ============================================
+  // LOADING
+  // ============================================
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#07091f] text-white">
+        <section className="flex min-h-screen items-center justify-center px-5">
+          <div className="text-center">
+            <div className="mb-5 text-6xl">🤯</div>
+
+            <h1 className="text-3xl font-black">
+              Loading Facts...
+            </h1>
+
+            <p className="mt-3 text-white/50">
+              Preparing something interesting for you.
+            </p>
+
+            <div className="mx-auto mt-6 h-2 w-48 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-green-400" />
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // ============================================
+  // ERROR
+  // ============================================
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[#07091f] text-white">
+        <section className="flex min-h-screen items-center justify-center px-5">
+          <div className="w-full max-w-2xl rounded-3xl border border-red-400/20 bg-red-500/10 p-10 text-center">
+            <div className="text-6xl">😵</div>
+
+            <h1 className="mt-5 text-3xl font-black">
+              Something went wrong
+            </h1>
+
+            <p className="mt-3 text-white/60">
+              {error}
+            </p>
+
+            <button
+              type="button"
+              onClick={fetchFacts}
+              className="mt-7 rounded-2xl bg-green-400 px-7 py-4 font-bold text-black transition hover:scale-105"
+            >
+              Try Again
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // ============================================
+  // MAIN PAGE
+  // ============================================
+
   return (
     <main className="min-h-screen bg-[#07091f] text-white">
 
-      {/* Header */}
-    
+      {/* ========================================
+          HERO
+      ======================================== */}
 
-      {/* Hero */}
       <section className="relative overflow-hidden">
-
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#123f36,transparent_55%)]" />
 
         <div className="relative mx-auto max-w-5xl px-5 pb-14 pt-20 text-center">
@@ -150,7 +422,10 @@ export default function FactsPage() {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* ========================================
+          CATEGORIES
+      ======================================== */}
+
       <section className="mx-auto max-w-7xl px-5">
 
         <div className="flex flex-wrap justify-center gap-3">
@@ -173,9 +448,13 @@ export default function FactsPage() {
           ))}
 
         </div>
+
       </section>
 
-      {/* Facts */}
+      {/* ========================================
+          FACTS SECTION
+      ======================================== */}
+
       <section className="mx-auto max-w-7xl px-5 py-14">
 
         <div className="mb-8 flex items-end justify-between">
@@ -195,10 +474,39 @@ export default function FactsPage() {
           </div>
 
           <span className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/60">
-            {filteredFacts.length} facts
+            {filteredFacts.length}{" "}
+            {filteredFacts.length === 1
+              ? "fact"
+              : "facts"}
           </span>
 
         </div>
+
+        {/* ========================================
+            NO FACTS
+        ======================================== */}
+
+        {filteredFacts.length === 0 && (
+          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-12 text-center">
+
+            <div className="text-6xl">
+              🔍
+            </div>
+
+            <h3 className="mt-5 text-2xl font-black">
+              No facts found
+            </h3>
+
+            <p className="mt-3 text-white/50">
+              There are no facts in this category yet.
+            </p>
+
+          </div>
+        )}
+
+        {/* ========================================
+            FACT CARDS
+        ======================================== */}
 
         <div className="grid gap-6 md:grid-cols-2">
 
@@ -207,13 +515,23 @@ export default function FactsPage() {
             const isExpanded =
               expanded.includes(fact.id);
 
+            const isLiked =
+              likedFacts.includes(fact.id);
+
+            const isSharing =
+              sharingId === fact.id;
+
             return (
               <article
                 key={fact.id}
+                id={`fact-${fact.id}`}
                 className="group rounded-3xl border border-white/10 bg-white/[0.06] p-7 shadow-xl transition hover:-translate-y-1 hover:bg-white/[0.09]"
               >
 
-                {/* Category + Emoji */}
+                {/* ========================================
+                    CATEGORY + EMOJI
+                ======================================== */}
+
                 <div className="mb-6 flex items-center justify-between">
 
                   <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-bold text-green-300">
@@ -221,22 +539,31 @@ export default function FactsPage() {
                   </span>
 
                   <span className="text-4xl">
-                    {fact.emoji}
+                    {fact.emoji || "🤯"}
                   </span>
 
                 </div>
 
-                {/* Label */}
+                {/* ========================================
+                    LABEL
+                ======================================== */}
+
                 <p className="mb-4 text-sm font-bold uppercase tracking-widest text-green-400">
                   🤯 Did You Know?
                 </p>
 
-                {/* Fact */}
+                {/* ========================================
+                    FACT
+                ======================================== */}
+
                 <h3 className="text-2xl font-black leading-relaxed">
                   {fact.fact}
                 </h3>
 
-                {/* Detail */}
+                {/* ========================================
+                    DETAIL
+                ======================================== */}
+
                 {isExpanded && (
                   <div className="mt-6 rounded-2xl border border-green-400/20 bg-green-400/10 p-5">
 
@@ -247,7 +574,10 @@ export default function FactsPage() {
                   </div>
                 )}
 
-                {/* Button */}
+                {/* ========================================
+                    TELL ME MORE
+                ======================================== */}
+
                 <button
                   type="button"
                   onClick={() =>
@@ -260,14 +590,66 @@ export default function FactsPage() {
                     : "🤯 Tell Me More"}
                 </button>
 
+                {/* ========================================
+                    LIKE + SHARE
+                ======================================== */}
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+
+                  {/* LIKE */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleLike(fact)
+                    }
+                    disabled={isLiked}
+                    className={`rounded-2xl border px-5 py-4 font-bold transition ${
+                      isLiked
+                        ? "border-pink-400/30 bg-pink-500/20 text-pink-300"
+                        : "border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {isLiked
+                      ? "❤️ Liked"
+                      : "🤍 Like"}{" "}
+                    <span className="ml-1 text-white/50">
+                      {fact.likes}
+                    </span>
+                  </button>
+
+                  {/* SHARE */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleShare(fact)
+                    }
+                    disabled={isSharing}
+                    className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 font-bold text-white transition hover:bg-white/10"
+                  >
+                    {isSharing
+                      ? "⏳ Sharing..."
+                      : "🔗 Share"}{" "}
+                    <span className="ml-1 text-white/50">
+                      {fact.shares}
+                    </span>
+                  </button>
+
+                </div>
+
               </article>
             );
           })}
 
         </div>
+
       </section>
 
-      {/* Bottom CTA */}
+      {/* ========================================
+          BOTTOM CTA
+      ======================================== */}
+
       <section className="mx-auto max-w-5xl px-5 pb-20">
 
         <div className="rounded-3xl border border-green-400/20 bg-gradient-to-r from-green-700/30 to-emerald-500/10 p-8 text-center">
@@ -286,9 +668,13 @@ export default function FactsPage() {
           </p>
 
         </div>
+
       </section>
 
-      {/* Footer */}
+      {/* ========================================
+          FOOTER
+      ======================================== */}
+
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-white/40">
         © 2026 Kadi Riddler. Think. Laugh. Get Tricked. 💜
       </footer>
