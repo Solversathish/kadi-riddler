@@ -454,7 +454,7 @@ function RiddlesContent() {
                 isTamil &&
                 tamilLanguage ===
                   "Tanglish"
-                  ? riddle.tanglishQuestion ||
+                  ? riddle.tanglish_question ||
                     riddle.question
                   : riddle.question;
 
@@ -462,7 +462,7 @@ function RiddlesContent() {
                 isTamil &&
                 tamilLanguage ===
                   "Tanglish"
-                  ? riddle.tanglishAnswer ||
+                  ? riddle.tanglish_answer ||
                     riddle.answer
                   : riddle.answer;
 
