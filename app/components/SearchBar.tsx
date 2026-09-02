@@ -1,26 +1,50 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
-import { kadiJokes } from "../data/kadi-jokes";
-import { facts } from "../data/facts";
 import { supabase } from "../supabase/client";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type SupabaseRiddle = {
   id: number;
   category?: string | null;
   difficulty?: string | null;
+
   question?: string | null;
   answer?: string | null;
 
-  // Support both possible naming styles
-  tanglishQuestion?: string | null;
-  tanglishAnswer?: string | null;
+  tamil_question?: string | null;
+  tamil_answer?: string | null;
 
   tanglish_question?: string | null;
   tanglish_answer?: string | null;
+};
+
+type SupabaseKadi = {
+  id: number;
+  category?: string | null;
+
+  tamil_question?: string | null;
+  tanglish_question?: string | null;
+  english_question?: string | null;
+
+  tamil_answer?: string | null;
+  tanglish_answer?: string | null;
+  english_answer?: string | null;
+};
+
+type SupabaseFact = {
+  id: number;
+  category?: string | null;
+
+  fact?: string | null;
+  detail?: string | null;
+
+  title?: string | null;
+  description?: string | null;
 };
 
 type SearchResult = {
@@ -32,71 +56,124 @@ type SearchResult = {
   href: string;
 };
 
+/* =========================================================
+   SEARCH BAR
+========================================================= */
+
 export default function SearchBar() {
   const router = useRouter();
 
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
-  /*
-   * =========================================================
-   * RIDDLES FROM SUPABASE
-   * =========================================================
-   *
-   * IMPORTANT:
-   * New riddles are stored directly in Supabase.
-   *
-   * Therefore we MUST load riddles from Supabase here
-   * instead of importing ../data/riddles.
-   */
-  const [supabaseRiddles, setSupabaseRiddles] = useState<
-    SupabaseRiddle[]
-  >([]);
+  /* =======================================================
+     SUPABASE DATA
+  ======================================================= */
 
-  /*
-   * LOAD RIDDLES FROM SUPABASE
-   */
+  const [riddles, setRiddles] = useState<SupabaseRiddle[]>([]);
+  const [kadiJokes, setKadiJokes] = useState<SupabaseKadi[]>([]);
+  const [facts, setFacts] = useState<SupabaseFact[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  /* =======================================================
+     LOAD ALL 3 TABLES FROM SUPABASE
+  ======================================================= */
+
   useEffect(() => {
     let mounted = true;
 
-    async function loadRiddles() {
+    async function loadAllData() {
       try {
-        const { data, error } = await supabase
-          .from("riddles")
-          .select("*")
-          .order("id", { ascending: true });
+        setLoading(true);
 
-        if (error) {
+        const [
+          riddlesResponse,
+          kadiResponse,
+          factsResponse,
+        ] = await Promise.all([
+          supabase
+            .from("riddles")
+            .select("*")
+            .order("id", { ascending: true }),
+
+          supabase
+            .from("kadi_jokes")
+            .select("*")
+            .order("id", { ascending: true }),
+
+          supabase
+            .from("facts")
+            .select("*")
+            .order("id", { ascending: true }),
+        ]);
+
+        /* =================================================
+           RIDDLES
+        ================================================= */
+
+        if (riddlesResponse.error) {
           console.error(
-            "SEARCH BAR - SUPABASE RIDDLES ERROR:",
-            error
+            "SEARCH BAR - RIDDLES ERROR:",
+            riddlesResponse.error
           );
-          return;
+        } else if (mounted) {
+          setRiddles(
+            (riddlesResponse.data || []) as SupabaseRiddle[]
+          );
         }
 
-        if (mounted) {
-          setSupabaseRiddles(
-            (data || []) as SupabaseRiddle[]
+        /* =================================================
+           KADI JOKES
+        ================================================= */
+
+        if (kadiResponse.error) {
+          console.error(
+            "SEARCH BAR - KADI JOKES ERROR:",
+            kadiResponse.error
+          );
+        } else if (mounted) {
+          setKadiJokes(
+            (kadiResponse.data || []) as SupabaseKadi[]
+          );
+        }
+
+        /* =================================================
+           FACTS
+        ================================================= */
+
+        if (factsResponse.error) {
+          console.error(
+            "SEARCH BAR - FACTS ERROR:",
+            factsResponse.error
+          );
+        } else if (mounted) {
+          setFacts(
+            (factsResponse.data || []) as SupabaseFact[]
           );
         }
       } catch (error) {
         console.error(
-          "SEARCH BAR - FAILED TO LOAD RIDDLES:",
+          "SEARCH BAR - FAILED TO LOAD DATA:",
           error
         );
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
-    loadRiddles();
+    loadAllData();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  // --------------------------------------------------
-  // GLOBAL SEARCH
-  // --------------------------------------------------
+  /* =======================================================
+     GLOBAL SEARCH
+  ======================================================= */
 
   const results = useMemo<SearchResult[]>(() => {
     const search = query.trim().toLowerCase();
@@ -105,61 +182,59 @@ export default function SearchBar() {
       return [];
     }
 
-    // ==================================================
-    // RIDDLES
-    // ==================================================
-    //
-    // IMPORTANT:
-    // These now come directly from Supabase.
-    //
+    /* =====================================================
+       RIDDLES
+    ===================================================== */
 
-    const riddleResults: SearchResult[] =
-      supabaseRiddles
-        .filter((riddle) => {
-          const tanglishQuestion =
-            riddle.tanglishQuestion ||
-            riddle.tanglish_question ||
-            "";
+    const riddleResults: SearchResult[] = riddles
+      .filter((riddle) => {
+        const searchableText = [
+          riddle.question || "",
+          riddle.answer || "",
 
-          const tanglishAnswer =
-            riddle.tanglishAnswer ||
-            riddle.tanglish_answer ||
-            "";
+          riddle.tamil_question || "",
+          riddle.tamil_answer || "",
 
-          const searchableText = [
-            riddle.question || "",
-            riddle.answer || "",
-            tanglishQuestion,
-            tanglishAnswer,
-            riddle.category || "",
-            riddle.difficulty || "",
-          ]
-            .join(" ")
-            .toLowerCase();
+          riddle.tanglish_question || "",
+          riddle.tanglish_answer || "",
 
-          return searchableText.includes(search);
-        })
-        .map((riddle) => ({
-          id: `riddle-${riddle.id}`,
-          numericId: riddle.id,
-          type: "Riddle",
-          category: riddle.category || "Riddle",
-          title: riddle.question || "Untitled Riddle",
-          href: "/riddles",
-        }));
+          riddle.category || "",
+          riddle.difficulty || "",
+        ]
+          .join(" ")
+          .toLowerCase();
 
-    // ==================================================
-    // KADI JOKES
-    // ==================================================
+        return searchableText.includes(search);
+      })
+      .map((riddle) => ({
+        id: `riddle-${riddle.id}`,
+        numericId: riddle.id,
+        type: "Riddle",
+        category: riddle.category || "Riddle",
+        title:
+          riddle.question ||
+          riddle.tamil_question ||
+          riddle.tanglish_question ||
+          "Untitled Riddle",
+        href: "/riddles",
+      }));
+
+    /* =====================================================
+       KADI JOKES
+    ===================================================== */
 
     const kadiResults: SearchResult[] = kadiJokes
       .filter((joke) => {
         const searchableText = [
-          joke.question,
-          joke.answer,
-          joke.tanglishQuestion || "",
-          joke.tanglishAnswer || "",
-          joke.category,
+          joke.tamil_question || "",
+          joke.tanglish_question || "",
+          joke.english_question || "",
+
+          joke.tamil_answer || "",
+          joke.tanglish_answer || "",
+          joke.english_answer || "",
+
+          joke.category || "",
         ]
           .join(" ")
           .toLowerCase();
@@ -170,21 +245,31 @@ export default function SearchBar() {
         id: `kadi-${joke.id}`,
         numericId: joke.id,
         type: "Kadi Joke",
-        category: joke.category,
-        title: joke.question,
+        category: joke.category || "Kadi Joke",
+
+        title:
+          joke.english_question ||
+          joke.tamil_question ||
+          joke.tanglish_question ||
+          "Untitled Kadi Joke",
+
         href: "/kadi-jokes",
       }));
 
-    // ==================================================
-    // FACTS
-    // ==================================================
+    /* =====================================================
+       FACTS
+    ===================================================== */
 
     const factResults: SearchResult[] = facts
       .filter((fact) => {
         const searchableText = [
-          fact.fact,
-          fact.detail,
-          fact.category,
+          fact.fact || "",
+          fact.detail || "",
+
+          fact.title || "",
+          fact.description || "",
+
+          fact.category || "",
         ]
           .join(" ")
           .toLowerCase();
@@ -195,25 +280,31 @@ export default function SearchBar() {
         id: `fact-${fact.id}`,
         numericId: fact.id,
         type: "Fact",
-        category: fact.category,
-        title: fact.fact,
+        category: fact.category || "Fact",
+
+        title:
+          fact.fact ||
+          fact.title ||
+          fact.description ||
+          "Untitled Fact",
+
         href: "/facts",
       }));
 
-    // ==================================================
-    // GLOBAL RESULTS
-    // ==================================================
+    /* =====================================================
+       COMBINE ALL RESULTS
+    ===================================================== */
 
     return [
       ...riddleResults,
       ...kadiResults,
       ...factResults,
     ].slice(0, 6);
-  }, [query, supabaseRiddles]);
+  }, [query, riddles, kadiJokes, facts]);
 
-  // --------------------------------------------------
-  // NAVIGATE TO RESULT
-  // --------------------------------------------------
+  /* =======================================================
+     NAVIGATE TO RESULT
+  ======================================================= */
 
   function goToResult(result: SearchResult) {
     const search = query.trim();
@@ -232,9 +323,9 @@ export default function SearchBar() {
     );
   }
 
-  // --------------------------------------------------
-  // SEARCH SUBMIT
-  // --------------------------------------------------
+  /* =======================================================
+     SEARCH SUBMIT
+  ======================================================= */
 
   function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
@@ -247,26 +338,14 @@ export default function SearchBar() {
       return;
     }
 
-    setFocused(false);
-
-    /*
-     * If a matching result exists,
-     * go directly to the first result.
-     */
     if (results.length > 0) {
       goToResult(results[0]);
-      return;
     }
-
-    /*
-     * Nothing found.
-     */
-    setFocused(false);
   }
 
-  // --------------------------------------------------
-  // SUGGESTION CLICK
-  // --------------------------------------------------
+  /* =======================================================
+     SUGGESTION CLICK
+  ======================================================= */
 
   function handleSuggestionClick(
     result: SearchResult
@@ -274,37 +353,32 @@ export default function SearchBar() {
     goToResult(result);
   }
 
-  // --------------------------------------------------
-  // SEE ALL RESULTS
-  // --------------------------------------------------
+  /* =======================================================
+     SEE ALL
+  ======================================================= */
 
   function handleSeeAllResults() {
     const search = query.trim();
 
-    if (!search) {
+    if (!search || results.length === 0) {
       return;
     }
+
+    const firstResult = results[0];
 
     setFocused(false);
     setQuery("");
 
-    /*
-     * Send the user to the first matching result.
-     */
-    if (results.length > 0) {
-      const firstResult = results[0];
-
-      router.push(
-        `${firstResult.href}?search=${encodeURIComponent(
-          search
-        )}&highlight=${firstResult.numericId}`
-      );
-    }
+    router.push(
+      `${firstResult.href}?search=${encodeURIComponent(
+        search
+      )}&highlight=${firstResult.numericId}`
+    );
   }
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
+  /* =======================================================
+     UI
+  ======================================================= */
 
   return (
     <div className="relative w-full max-w-md">
@@ -340,14 +414,31 @@ export default function SearchBar() {
         </div>
       </form>
 
-      {/* ==================================================
-          LIVE GLOBAL SEARCH RESULTS
-      ================================================== */}
+      {/* ===================================================
+          SEARCH RESULTS
+      =================================================== */}
 
       {focused && query.trim() && (
         <div className="absolute left-0 right-0 top-full z-[100] mt-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1030] shadow-2xl">
 
-          {results.length > 0 ? (
+          {/* LOADING */}
+
+          {loading ? (
+            <div className="px-4 py-5 text-center">
+              <div className="text-2xl">
+                🔍
+              </div>
+
+              <p className="mt-2 text-sm font-bold text-white/70">
+                Searching...
+              </p>
+            </div>
+          ) : results.length > 0 ? (
+
+            /* =================================================
+               RESULTS
+            ================================================= */
+
             <div className="p-2">
 
               {results.map((result) => (
@@ -396,9 +487,12 @@ export default function SearchBar() {
               </button>
 
             </div>
+
           ) : (
 
-            /* NO RESULTS */
+            /* =================================================
+               NO RESULTS
+            ================================================= */
 
             <div className="px-4 py-5 text-center">
 
@@ -415,7 +509,6 @@ export default function SearchBar() {
               </p>
 
             </div>
-
           )}
 
         </div>
