@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../supabase/client";
 
 /* =========================================================
@@ -45,6 +45,7 @@ const categories = [
 
 function KadiJokesContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   /* =========================================================
      GLOBAL SEARCH
@@ -95,6 +96,41 @@ function KadiJokesContent() {
 
   const [sharingJokes, setSharingJokes] =
     useState<number[]>([]);
+
+  /* =========================================================
+     PAGINATION
+     ========================================================= */
+
+  const ITEMS_PER_PAGE = 10;
+
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  /* =========================================================
+     GO TO TOP
+     ========================================================= */
+
+  const [showGoToTop, setShowGoToTop] =
+    useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowGoToTop(window.scrollY > 500);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   /* =========================================================
      LOAD JOKES
@@ -187,6 +223,121 @@ function KadiJokesContent() {
   }, [
     filteredJokes,
     highlightId,
+  ]);
+
+  /* =========================================================
+     PAGINATION CALCULATIONS
+     ========================================================= */
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      orderedJokes.length /
+        ITEMS_PER_PAGE
+    )
+  );
+
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages
+  );
+
+  const paginatedJokes = useMemo(() => {
+    const start =
+      (safeCurrentPage - 1) *
+      ITEMS_PER_PAGE;
+
+    return orderedJokes.slice(
+      start,
+      start + ITEMS_PER_PAGE
+    );
+  }, [
+    orderedJokes,
+    safeCurrentPage,
+  ]);
+
+  /*
+    Numeric page list only.
+    -1 is used only as the visual "..." marker.
+    It is never passed to changePage().
+  */
+  const visiblePageNumbers =
+    useMemo(() => {
+      if (totalPages <= 5) {
+        return Array.from(
+          { length: totalPages },
+          (_, index) => index + 1
+        );
+      }
+
+      if (safeCurrentPage <= 3) {
+        return [1, 2, 3, 4, -1, totalPages];
+      }
+
+      if (safeCurrentPage >= totalPages - 2) {
+        return [
+          1,
+          -1,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages,
+        ];
+      }
+
+      return [
+        1,
+        -1,
+        safeCurrentPage - 1,
+        safeCurrentPage,
+        safeCurrentPage + 1,
+        -1,
+        totalPages,
+      ];
+    }, [
+      totalPages,
+      safeCurrentPage,
+    ]);
+
+  const changePage = (page: number) => {
+    if (
+      page < 1 ||
+      page > totalPages ||
+      page === safeCurrentPage
+    ) {
+      return;
+    }
+
+    setCurrentPage(page);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  /*
+    Keep pagination valid when the category or
+    highlighted search result changes.
+  */
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedCategory,
+    highlightId,
+  ]);
+
+  /*
+    If the number of pages becomes smaller,
+    keep the current page inside the valid range.
+  */
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [
+    currentPage,
+    totalPages,
   ]);
 
   /* =========================================================
@@ -590,6 +741,33 @@ function KadiJokesContent() {
 };
 
   /* =========================================================
+     CANCEL SEARCH
+     ========================================================= */
+
+  const cancelSearch = () => {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    params.delete("search");
+    params.delete("highlight");
+
+    const query = params.toString();
+
+    router.replace(
+      query
+        ? `${window.location.pathname}?${query}`
+        : window.location.pathname,
+      { scroll: false }
+    );
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  /* =========================================================
      PAGE
      ========================================================= */
 
@@ -688,7 +866,10 @@ function KadiJokesContent() {
           </div>
 
           <span className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/60">
-            {orderedJokes.length} jokes
+            {orderedJokes.length}{" "}
+            {orderedJokes.length === 1
+              ? "joke"
+              : "jokes"}
           </span>
 
         </div>
@@ -698,15 +879,27 @@ function KadiJokesContent() {
         ===================================================== */}
 
         {globalSearch && (
-          <div className="mb-8 rounded-2xl border border-orange-400/20 bg-orange-400/10 px-5 py-4">
+          <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-orange-400/20 bg-orange-400/10 px-5 py-4">
 
-            <p className="text-sm text-white/60">
-              Search result for
-            </p>
+            <div className="min-w-0">
+              <p className="text-sm text-white/60">
+                Search result for
+              </p>
 
-            <p className="mt-1 text-lg font-bold text-orange-300">
-              "{globalSearch}"
-            </p>
+              <p className="mt-1 truncate text-lg font-bold text-orange-300">
+                "{globalSearch}"
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={cancelSearch}
+              aria-label="Cancel search"
+              title="Cancel search"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-orange-300/30 bg-black/20 text-2xl font-bold leading-none text-orange-200 transition hover:scale-105 hover:bg-orange-400 hover:text-black"
+            >
+              ×
+            </button>
 
           </div>
         )}
@@ -808,7 +1001,7 @@ function KadiJokesContent() {
 
             <div className="grid gap-6 md:grid-cols-2">
 
-              {orderedJokes.map(
+              {paginatedJokes.map(
                 (joke) => {
 
                   const isRevealed =
@@ -1060,6 +1253,146 @@ function KadiJokesContent() {
 
           )}
 
+        {/* =====================================================
+            PAGINATION
+        ===================================================== */}
+
+        {!loading &&
+          !error &&
+          orderedJokes.length > 0 &&
+          totalPages > 1 && (
+            <>
+              {/* Desktop pagination */}
+              <div className="mt-12 hidden items-center justify-center gap-2 md:flex">
+                <button
+                  type="button"
+                  onClick={() =>
+                    changePage(
+                      safeCurrentPage - 1
+                    )
+                  }
+                  disabled={
+                    safeCurrentPage === 1
+                  }
+                  className="rounded-xl border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  ← Previous
+                </button>
+
+                {visiblePageNumbers.map(
+                  (page, index) =>
+                    page === -1 ? (
+                      <span
+                        key={`desktop-ellipsis-${index}`}
+                        className="px-2 text-white/40"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={`desktop-page-${page}`}
+                        type="button"
+                        onClick={() =>
+                          changePage(page)
+                        }
+                        className={`min-w-11 rounded-xl px-4 py-3 text-sm font-bold transition ${
+                          safeCurrentPage === page
+                            ? "bg-orange-400 text-black shadow-lg shadow-orange-400/20"
+                            : "border border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    changePage(
+                      safeCurrentPage + 1
+                    )
+                  }
+                  disabled={
+                    safeCurrentPage ===
+                    totalPages
+                  }
+                  className="rounded-xl border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  Next →
+                </button>
+              </div>
+
+              {/* Mobile fixed pagination */}
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07091f]/90 px-3 py-3 backdrop-blur-xl md:hidden">
+                <div className="mx-auto flex max-w-7xl items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changePage(
+                        safeCurrentPage - 1
+                      )
+                    }
+                    disabled={
+                      safeCurrentPage === 1
+                    }
+                    className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Previous page"
+                  >
+                    ←
+                  </button>
+
+                  {visiblePageNumbers.map(
+                    (page, index) =>
+                      page === -1 ? (
+                        <span
+                          key={`mobile-ellipsis-${index}`}
+                          className="px-1 text-xs text-white/40"
+                        >
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={`mobile-page-${page}`}
+                          type="button"
+                          onClick={() =>
+                            changePage(page)
+                          }
+                          className={`min-w-9 rounded-xl px-2.5 py-2.5 text-xs font-bold transition ${
+                            safeCurrentPage === page
+                              ? "bg-orange-400 text-black shadow-lg shadow-orange-400/20"
+                              : "border border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changePage(
+                        safeCurrentPage + 1
+                      )
+                    }
+                    disabled={
+                      safeCurrentPage ===
+                      totalPages
+                    }
+                    className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Next page"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+
+              {/* Extra bottom space for fixed mobile pagination */}
+              <div className="h-20 md:hidden" />
+            </>
+          )}
+
       </section>
 
       {/* =====================================================
@@ -1096,6 +1429,21 @@ function KadiJokesContent() {
         © 2026 Kadi Riddler. Think. Laugh.
         Get Tricked. 💜
       </footer>
+
+      {/* =====================================================
+          GO TO TOP
+      ===================================================== */}
+
+      {showGoToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Go to top"
+          className="fixed bottom-24 right-5 z-50 flex size-12 items-center justify-center rounded-full bg-orange-400 text-2xl font-black text-black shadow-xl shadow-orange-400/20 transition hover:scale-105 md:bottom-8 md:right-8"
+        >
+          ↑
+        </button>
+      )}
 
     </main>
   );

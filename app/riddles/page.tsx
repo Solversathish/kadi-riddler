@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../supabase/client";
 
 type Riddle = {
@@ -59,6 +59,7 @@ export default function RiddlesPage() {
    ========================================================= */
 
 function RiddlesContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   /*
@@ -121,6 +122,14 @@ function RiddlesContent() {
   */
   const [sharingId, setSharingId] =
     useState<number | null>(null);
+
+  /* =========================================================
+     PAGINATION / GO TO TOP
+     ========================================================= */
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showGoTop, setShowGoTop] = useState(false);
 
   /* =========================================================
      LOAD RIDDLES
@@ -268,6 +277,116 @@ const filteredRiddles = useMemo(() => {
     filteredRiddles,
     highlightId,
   ]);
+
+  /* =========================================================
+     PAGINATION
+     ========================================================= */
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(orderedRiddles.length / ITEMS_PER_PAGE)
+  );
+
+  const paginatedRiddles = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return orderedRiddles.slice(
+      start,
+      start + ITEMS_PER_PAGE
+    );
+  }, [orderedRiddles, currentPage]);
+
+  /* Keep the current page valid when data/category changes. */
+  useEffect(() => {
+    setCurrentPage((page) =>
+      Math.min(page, totalPages)
+    );
+  }, [totalPages]);
+
+  /* Always start from page 1 when category/search changes. */
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, globalSearch]);
+
+  /* =========================================================
+     GO TO TOP BUTTON
+     ========================================================= */
+
+  useEffect(() => {
+    function handleScroll() {
+      setShowGoTop(window.scrollY > 500);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
+    return () =>
+      window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  function scrollToTop() {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function changePage(page: number) {
+    const nextPage = Math.min(
+      Math.max(page, 1),
+      totalPages
+    );
+
+    setCurrentPage(nextPage);
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  /* =========================================================
+     PAGINATION NUMBER WINDOW
+     ========================================================= */
+
+  const paginationPages = useMemo(() => {
+    if (totalPages <= 1) {
+      return [1];
+    }
+
+    if (totalPages <= 5) {
+      return Array.from(
+        { length: totalPages },
+        (_, index) => index + 1
+      );
+    }
+
+    /*
+      Keep the active page at the start of the visible window.
+
+      Examples:
+        Page 1 -> 1 2 3 ... FINAL
+        Page 2 -> 2 3 4 ... FINAL
+        Page 3 -> 3 4 5 ... FINAL
+
+      Near the end, show the final three pages.
+    */
+    if (currentPage <= totalPages - 3) {
+      return [
+        currentPage,
+        currentPage + 1,
+        currentPage + 2,
+        "ellipsis",
+        totalPages,
+      ];
+    }
+
+    return [
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }, [currentPage, totalPages]);
 
   /* =========================================================
      SCROLL TO HIGHLIGHTED RIDDLE
@@ -598,7 +717,7 @@ const filteredRiddles = useMemo(() => {
           RIDDLES
       ===================================================== */}
 
-      <section className="mx-auto max-w-7xl px-5 py-14">
+      <section className="mx-auto max-w-7xl px-5 pb-28 pt-14 md:pb-14">
 
         <div className="mb-8 flex items-end justify-between">
 
@@ -631,16 +750,33 @@ const filteredRiddles = useMemo(() => {
         =================================================== */}
 
         {search && (
-          <div className="mb-8 rounded-2xl border border-purple-400/20 bg-purple-400/10 px-5 py-4">
+          <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-purple-400/20 bg-purple-400/10 px-5 py-4">
+            <div>
+              <p className="text-sm text-white/60">
+                Search result for
+              </p>
 
-            <p className="text-sm text-white/60">
-              Search result for
-            </p>
+              <p className="mt-1 text-lg font-bold text-purple-300">
+                "{search}"
+              </p>
+            </div>
 
-            <p className="mt-1 text-lg font-bold text-purple-300">
-              "{search}"
-            </p>
-
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setCurrentPage(1);
+                router.replace("/riddles");
+                window.scrollTo({
+                  top: 0,
+                  behavior: "smooth",
+                });
+              }}
+              aria-label="Cancel search"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-lg font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              ×
+            </button>
           </div>
         )}
 
@@ -650,7 +786,7 @@ const filteredRiddles = useMemo(() => {
 
         <div className="grid gap-6 md:grid-cols-2">
 
-          {orderedRiddles.map(
+          {paginatedRiddles.map(
             (riddle) => {
 
               const isRevealed =
@@ -946,6 +1082,108 @@ const filteredRiddles = useMemo(() => {
         </div>
 
         {/* ===================================================
+            PAGINATION
+        =================================================== */}
+
+        {totalPages > 1 && (
+          <>
+            {/* Desktop pagination */}
+            <div className="mt-10 hidden items-center justify-center gap-2 md:flex">
+              <button
+                type="button"
+                onClick={() => changePage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ← Previous
+              </button>
+
+              {paginationPages.map((page, index) =>
+                page === "ellipsis" ? (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="px-2 text-white/40"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => changePage(page)}
+                    className={`min-w-11 rounded-xl px-4 py-3 text-sm font-bold transition ${
+                      currentPage === page
+                        ? "bg-purple-400 text-black shadow-lg shadow-purple-400/20"
+                        : "border border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() => changePage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
+
+            {/* Mobile fixed pagination */}
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07091f]/90 px-3 py-3 backdrop-blur-xl md:hidden">
+              <div className="mx-auto flex max-w-xl items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => changePage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                  className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  ←
+                </button>
+
+                {paginationPages.map((page, index) =>
+                  page === "ellipsis" ? (
+                    <span
+                      key={`mobile-ellipsis-${index}`}
+                      className="px-1 text-sm text-white/40"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`mobile-${page}`}
+                      type="button"
+                      onClick={() => changePage(page)}
+                      className={`min-w-9 rounded-xl px-2.5 py-2.5 text-sm font-bold transition ${
+                        currentPage === page
+                          ? "bg-purple-400 text-black"
+                          : "border border-white/10 bg-white/[0.06] text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => changePage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                  className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  →
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ===================================================
             NO RESULTS
         =================================================== */}
 
@@ -1004,6 +1242,21 @@ const filteredRiddles = useMemo(() => {
         © 2026 Kadi Riddler. Think.
         Laugh. Get Tricked. 💜
       </footer>
+
+      {/* =====================================================
+          GO TO TOP
+      ===================================================== */}
+
+      {showGoTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Go to top"
+          className="fixed bottom-20 right-4 z-50 flex size-12 items-center justify-center rounded-full border border-purple-400/30 bg-purple-400 text-xl font-black text-black shadow-xl shadow-purple-400/20 transition hover:scale-105 md:bottom-6 md:right-6"
+        >
+          ↑
+        </button>
+      )}
 
     </main>
   );
