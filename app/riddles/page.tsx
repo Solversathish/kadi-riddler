@@ -376,7 +376,7 @@ const filteredRiddles = useMemo(() => {
         currentPage,
         currentPage + 1,
         currentPage + 2,
-        "ellipsis",
+        -1,
         totalPages,
       ];
     }
@@ -1099,7 +1099,7 @@ const filteredRiddles = useMemo(() => {
               </button>
 
               {paginationPages.map((page, index) =>
-                page === "ellipsis" ? (
+                page === -1 ? (
                   <span
                     key={`ellipsis-${index}`}
                     className="px-2 text-white/40"
@@ -1146,7 +1146,7 @@ const filteredRiddles = useMemo(() => {
                 </button>
 
                 {paginationPages.map((page, index) =>
-                  page === "ellipsis" ? (
+                  page === -1 ? (
                     <span
                       key={`mobile-ellipsis-${index}`}
                       className="px-1 text-sm text-white/40"
