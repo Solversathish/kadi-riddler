@@ -3,9 +3,33 @@
 import Link from "next/link";
 import SearchBar from "./components/SearchBar";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isActive = (path: string) => {
+    if (path === "/") {
+      return pathname === "/";
+    }
+
+    return pathname.startsWith(path);
+  };
+
+  const desktopLinkClass = (path: string) =>
+    `rounded-xl px-3 py-2 font-bold transition ${
+      isActive(path)
+        ? "bg-white/10 text-yellow-300"
+        : "text-white/80 hover:text-yellow-300"
+    }`;
+
+  const mobileLinkClass = (path: string) =>
+    `rounded-2xl px-5 py-4 font-bold transition ${
+      isActive(path)
+        ? "bg-white/10 text-yellow-300"
+        : "text-white hover:bg-white/10"
+    }`;
 
   return (
     <header className="relative z-50 border-b border-white/10 bg-[#070b25]">
@@ -41,32 +65,39 @@ export default function Header() {
           </Link>
 
           {/* DESKTOP NAVIGATION */}
-          <nav className="hidden items-center gap-8 md:flex">
+          <nav className="hidden items-center gap-5 md:flex">
 
             <Link
               href="/"
-              className="font-bold text-white/80 transition hover:text-yellow-300"
+              className={desktopLinkClass("/")}
             >
               Home
             </Link>
 
             <Link
               href="/riddles"
-              className="font-bold text-white/80 transition hover:text-yellow-300"
+              className={desktopLinkClass("/riddles")}
             >
               Riddles
             </Link>
 
             <Link
               href="/kadi-jokes"
-              className="font-bold text-white/80 transition hover:text-yellow-300"
+              className={desktopLinkClass("/kadi-jokes")}
             >
               Kadi Jokes
             </Link>
 
             <Link
+              href="/questions"
+              className={desktopLinkClass("/questions")}
+            >
+              Questions
+            </Link>
+
+            <Link
               href="/facts"
-              className="font-bold text-white/80 transition hover:text-yellow-300"
+              className={desktopLinkClass("/facts")}
             >
               Amazing Facts
             </Link>
@@ -107,7 +138,7 @@ export default function Header() {
             <Link
               href="/"
               onClick={() => setMenuOpen(false)}
-              className="rounded-2xl px-5 py-4 font-bold text-white transition hover:bg-white/10"
+              className={mobileLinkClass("/")}
             >
               🏠 Home
             </Link>
@@ -115,7 +146,7 @@ export default function Header() {
             <Link
               href="/riddles"
               onClick={() => setMenuOpen(false)}
-              className="rounded-2xl px-5 py-4 font-bold text-white transition hover:bg-white/10"
+              className={mobileLinkClass("/riddles")}
             >
               🧩 Riddles
             </Link>
@@ -123,15 +154,23 @@ export default function Header() {
             <Link
               href="/kadi-jokes"
               onClick={() => setMenuOpen(false)}
-              className="rounded-2xl px-5 py-4 font-bold text-white transition hover:bg-white/10"
+              className={mobileLinkClass("/kadi-jokes")}
             >
               😂 Kadi Jokes
             </Link>
 
             <Link
+              href="/questions"
+              onClick={() => setMenuOpen(false)}
+              className={mobileLinkClass("/questions")}
+            >
+              ❓ Questions
+            </Link>
+
+            <Link
               href="/facts"
               onClick={() => setMenuOpen(false)}
-              className="rounded-2xl px-5 py-4 font-bold text-white transition hover:bg-white/10"
+              className={mobileLinkClass("/facts")}
             >
               🤯 Amazing Facts
             </Link>
